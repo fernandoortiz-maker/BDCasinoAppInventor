@@ -1,149 +1,245 @@
-import psycopg2
-from psycopg2.extras import RealDictCursor
+from flask import Flask, session, jsonify, send_from_directory, request
+import random
 import os
-import hashlib
-from datetime import datetime
+# Importamos la lógica de base de datos
+from db_config import registrar_usuario_nuevo, validar_login, get_user_balance, update_user_balance
 
-# --- CONEXIÓN A NEON.TECH ---
-def get_db_connection():
+app = Flask(__name__, static_folder="static", static_url_path="")
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
+
+# --- CONFIGURACIÓN DE SESIONES PARA APP INVENTOR ---
+# Esto es vital para que las cookies viajen bien entre Android y Render
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600 # 1 hora
+
+# ==========================================
+# 1. API DE REGISTRO (Con Depuración)
+# ==========================================
+@app.route("/api/registrar", methods=["POST"])
+def api_registrar():
+    print("--- INICIO DE REGISTRO ---")
     try:
-        # Render busca la variable DATABASE_URL automáticamente
-        database_url = os.environ.get('DATABASE_URL')
-        if not database_url:
-            print("❌ ERROR CRÍTICO: No existe la variable DATABASE_URL en Render")
-            return None
-        conn = psycopg2.connect(database_url)
-        return conn
-    except Exception as e:
-        print(f"❌ Error conectando a Neon: {e}")
-        return None
+        # Intentamos leer el JSON. force=True ayuda si el header falla.
+        # silent=True evita que explote si está vacío.
+        datos = request.get_json(force=True, silent=True)
+        
+        if not datos:
+            # Si no hay JSON, imprimimos qué llegó para depurar
+            cuerpo = request.get_data(as_text=True)
+            print(f"❌ ERROR: JSON vacío o inválido. Recibido: {cuerpo}")
+            return jsonify({"exito": False, "mensaje": "JSON inválido"}), 400
+            
+        print(f"📥 Datos recibidos: {datos}")
+        
+        # Validar campos obligatorios
+        campos = ['nombre', 'apellido', 'curp', 'email', 'password']
+        faltantes = [campo for campo in campos if campo not in datos]
+        
+        if faltantes:
+            return jsonify({"exito": False, "mensaje": f"Faltan datos: {faltantes}"}), 400
 
-# --- REGISTRO DE USUARIO (ADAPTADO A NUEVA BASE DE DATOS) ---
-def registrar_usuario_nuevo(datos):
-    """
-    Inserta un usuario nuevo asignándole el rol de 'Jugador' automáticamente.
-    Crea también su registro en la tabla Saldo.
-    """
-    conn = get_db_connection()
-    if not conn:
-        return {"exito": False, "mensaje": "Error de conexión a BD"}
+        # Llamar a db_config.py para guardar en Neon
+        resultado = registrar_usuario_nuevo(datos)
+        
+        # Devolver respuesta a App Inventor
+        codigo = 200 if resultado['exito'] else 400
+        return jsonify(resultado), codigo
+
+    except Exception as e:
+        print(f"🔥 ERROR INTERNO: {e}")
+        return jsonify({"exito": False, "mensaje": f"Error del servidor: {str(e)}"}), 500
+
+# ==========================================
+# 2. API DE LOGIN
+# ==========================================
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    try:
+        datos = request.get_json(force=True)
+        email = datos.get('email')
+        password = datos.get('password')
+        
+        usuario = validar_login(email, password)
+        
+        if usuario:
+            # Crear sesión de Flask
+            session.clear()
+            session.permanent = True
+            session["user_id"] = usuario['email']
+            
+            # Inicializar juego si no existe
+            get_game()
+            
+            return jsonify({
+                "exito": True, 
+                "mensaje": "Login correcto",
+                "user_id": usuario['email'],
+                "saldo": float(usuario['saldo_actual'])
+            })
+        else:
+            return jsonify({"exito": False, "mensaje": "Credenciales incorrectas"}), 401
+    except Exception as e:
+        return jsonify({"exito": False, "mensaje": str(e)}), 400
+
+# ==========================================
+# 3. LÓGICA DEL JUEGO BLACKJACK
+# ==========================================
+
+SUITS = ["♠", "♥", "♦", "♣"]
+RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"]
+
+def new_deck():
+    deck = [(r, s) for s in SUITS for r in RANKS] * 4
+    random.shuffle(deck)
+    return deck
+
+def card_value(rank):
+    if rank == "A": return 11
+    if rank in ("J","Q","K"): return 10
+    return int(rank)
+
+def hand_value(hand):
+    total = sum(card_value(r) for r, s in hand)
+    aces = sum(1 for r, s in hand if r == "A")
+    while total > 21 and aces > 0:
+        total -= 10
+        aces -= 1
+    return total
+
+def get_game():
+    g = session.get("game")
+    user_id = session.get("user_id")
     
-    try:
-        cursor = conn.cursor()
+    if not g:
+        saldo = 500
+        if user_id: saldo = get_user_balance(user_id)
         
-        # 1. Encriptar contraseña (SHA256)
-        pass_hash = hashlib.sha256(datos['password'].encode()).hexdigest()
-        
-        # 2. Insertar Usuario
-        # ⚠️ CAMBIO IMPORTANTE: Buscamos el ID del rol 'Jugador' al vuelo
-        sql_usuario = """
-            INSERT INTO Usuario (id_rol, nombre, apellido, curp, email, password_hash, fecha_registro, activo)
-            VALUES (
-                (SELECT id_rol FROM Rol WHERE nombre = 'Jugador'), 
-                %s, %s, %s, %s, %s, NOW(), true
-            )
-            RETURNING id_usuario;
-        """
-        
-        cursor.execute(sql_usuario, (
-            datos['nombre'], 
-            datos['apellido'], 
-            datos['curp'], 
-            datos['email'], 
-            pass_hash
-        ))
-        
-        # Obtenemos el ID que Neon acaba de crear
-        id_nuevo = cursor.fetchone()[0]
-        
-        # 3. Crear Saldo Inicial ($500 de regalo de bienvenida)
-        sql_saldo = """
-            INSERT INTO Saldo (id_usuario, saldo_actual, ultima_actualizacion)
-            VALUES (%s, 500.00, NOW());
-        """
-        cursor.execute(sql_saldo, (id_nuevo,))
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        print(f"✅ Usuario registrado con éxito: {datos['email']} (ID: {id_nuevo})")
-        return {"exito": True, "mensaje": "Registro exitoso"}
-        
-    except psycopg2.IntegrityError as e:
-        conn.rollback()
-        error_msg = str(e)
-        if "email" in error_msg:
-            return {"exito": False, "mensaje": "Este correo ya está registrado."}
-        if "curp" in error_msg:
-            return {"exito": False, "mensaje": "Esta CURP ya está registrada."}
-        if "rol" in error_msg:
-             return {"exito": False, "mensaje": "Error interno: El rol 'Jugador' no existe en la BD."}
-        return {"exito": False, "mensaje": "Error de duplicidad en base de datos."}
-        
-    except Exception as e:
-        conn.rollback()
-        print(f"❌ Error desconocido en registro: {e}")
-        return {"exito": False, "mensaje": str(e)}
-
-# --- VALIDAR LOGIN ---
-def validar_login(email, password):
-    conn = get_db_connection()
-    if not conn: return None
+        g = {
+            "deck": new_deck(),
+            "player": [], "dealer": [],
+            "bet": 0, "bank": saldo,
+            "phase": "BETTING", "message": "HAZ TU APUESTA"
+        }
     
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        pass_hash = hashlib.sha256(password.encode()).hexdigest()
-        
-        # Unimos Usuario y Saldo para tener toda la info de una vez
-        sql = """
-            SELECT u.id_usuario, u.email, u.nombre, s.saldo_actual
-            FROM Usuario u
-            JOIN Saldo s ON u.id_usuario = s.id_usuario
-            WHERE u.email = %s AND u.password_hash = %s AND u.activo = true
-        """
-        cursor.execute(sql, (email, pass_hash))
-        usuario = cursor.fetchone()
-        
-        cursor.close()
-        conn.close()
-        return usuario # Retorna diccionario con datos o None
-    except Exception as e:
-        print(f"Error login: {e}")
-        return None
+    # Recarga automática de bancarrota
+    if g["bank"] < 10 and g["bet"] == 0:
+        g["bank"] = 500
+        g["message"] = "¡BANCARROTA! TE REGALAMOS $500"
+        if user_id: update_user_balance(user_id, 500)
+            
+    return g
 
-# --- OBTENER SALDO ---
-def get_user_balance(email):
-    conn = get_db_connection()
-    if not conn: return 0
-    try:
-        cursor = conn.cursor()
-        sql = """
-            SELECT s.saldo_actual 
-            FROM Usuario u
-            JOIN Saldo s ON u.id_usuario = s.id_usuario
-            WHERE u.email = %s
-        """
-        cursor.execute(sql, (email,))
-        res = cursor.fetchone()
-        conn.close()
-        return float(res[0]) if res else 0
-    except:
-        return 0
+def save_game(g):
+    session["game"] = g
+    user_id = session.get("user_id")
+    if user_id: update_user_balance(user_id, g["bank"])
 
-# --- ACTUALIZAR SALDO ---
-def update_user_balance(email, nuevo_saldo):
-    conn = get_db_connection()
-    if not conn: return
-    try:
-        cursor = conn.cursor()
-        sql = """
-            UPDATE Saldo 
-            SET saldo_actual = %s, ultima_actualizacion = NOW()
-            WHERE id_usuario = (SELECT id_usuario FROM Usuario WHERE email = %s)
-        """
-        cursor.execute(sql, (nuevo_saldo, email))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Error actualizando saldo: {e}")
+# --- RUTAS DE JUEGO ---
+@app.route("/")
+def index():
+    # Compatibilidad con WebViewer (/?user_id=...)
+    uid = request.args.get('user_id')
+    if uid: session["user_id"] = uid
+    return send_from_directory("static", "index.html")
+
+@app.route("/api/state")
+def api_state():
+    g = get_game()
+    return jsonify(serialize_state(g))
+
+def serialize_state(g):
+    return {
+        "player": g["player"], "dealer": g["dealer"],
+        "player_value": hand_value(g["player"]),
+        "dealer_value": hand_value(g["dealer"]),
+        "bet": g["bet"], "bank": g["bank"],
+        "phase": g["phase"], "message": g["message"],
+        "dealer_hidden": g["phase"] == "PLAYER" and len(g["dealer"]) >= 2
+    }
+
+@app.route("/api/bet", methods=["POST"])
+def api_bet():
+    g = get_game()
+    if g["phase"] != "BETTING": return jsonify(serialize_state(g))
+    data = request.get_json(force=True)
+    amount = int(data.get("amount", 0))
+    if 0 < amount <= g["bank"]:
+        g["bet"] += amount
+        g["bank"] -= amount
+        g["message"] = f"APUESTA: ${g['bet']}"
+    save_game(g)
+    return jsonify(serialize_state(g))
+
+@app.route("/api/deal", methods=["POST"])
+def api_deal():
+    g = get_game()
+    if g["bet"] == 0: return jsonify(serialize_state(g))
+    
+    g["player"] = [draw(g), draw(g)]
+    g["dealer"] = [draw(g), draw(g)]
+    g["phase"] = "PLAYER"
+    
+    if hand_value(g["player"]) == 21: # Blackjack natural
+        win = g["bet"] * 2.5 if hand_value(g["dealer"]) != 21 else g["bet"]
+        g["bank"] += win
+        g["message"] = "¡BLACKJACK!"
+        g["phase"] = "END"
+        g["bet"] = 0
+        
+    save_game(g)
+    return jsonify(serialize_state(g))
+
+@app.route("/api/hit", methods=["POST"])
+def api_hit():
+    g = get_game()
+    if g["phase"] == "PLAYER":
+        g["player"].append(draw(g))
+        if hand_value(g["player"]) > 21:
+            g["message"] = "TE PASASTE"
+            g["phase"] = "END"
+            g["bet"] = 0
+    save_game(g)
+    return jsonify(serialize_state(g))
+
+@app.route("/api/stand", methods=["POST"])
+def api_stand():
+    g = get_game()
+    if g["phase"] == "PLAYER":
+        while hand_value(g["dealer"]) < 17:
+            g["dealer"].append(draw(g))
+        
+        p = hand_value(g["player"])
+        d = hand_value(g["dealer"])
+        
+        if d > 21 or p > d:
+            g["bank"] += g["bet"] * 2
+            g["message"] = "¡GANASTE!"
+        elif p < d:
+            g["message"] = "LA CASA GANA"
+        else:
+            g["bank"] += g["bet"]
+            g["message"] = "EMPATE"
+            
+        g["phase"] = "END"
+        g["bet"] = 0
+    save_game(g)
+    return jsonify(serialize_state(g))
+
+@app.route("/api/new_round", methods=["POST"])
+def api_new_round():
+    g = get_game()
+    g["phase"] = "BETTING"
+    g["player"] = []
+    g["dealer"] = []
+    g["message"] = "HAZ TU APUESTA"
+    save_game(g)
+    return jsonify(serialize_state(g))
+
+def draw(g):
+    if not g["deck"]: g["deck"] = new_deck()
+    return g["deck"].pop()
+
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
