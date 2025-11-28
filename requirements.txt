@@ -1,3 +1,5 @@
 flask
 psycopg2-binary
 gunicorn
+passlib[argon2]
+argon2-cffi
