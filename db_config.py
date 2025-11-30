@@ -51,7 +51,7 @@ def registrar_usuario_nuevo(datos):
         id_nuevo = cursor.fetchone()[0]
         
         # 3. Crear Saldo inicial
-        sql_saldo = "INSERT INTO Saldo (id_usuario, saldo_actual, ultima_actualizacion) VALUES (%s, 500.00, NOW());"
+        sql_saldo = "INSERT INTO Saldo (id_usuario, saldo_actual, ultima_actualizacion) VALUES (%s, 0.00, NOW());"
         cursor.execute(sql_saldo, (id_nuevo,))
         
         conn.commit()
