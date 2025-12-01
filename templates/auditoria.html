@@ -1,43 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Auditor - Royal Crumbs</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='css/auditor.css') }}">
+    <title>Panel Auditor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auditor.css') }}">
 </head>
-
 <body>
-
-    <!-- ======== ENCABEZADO ======== -->
     <div class="rc-header">
-        <a href="/logout" class="rc-back">‹</a>
+        <a href="#" class="rc-back"></a> <!-- Sin acción, es el home -->
         <h1 class="rc-screen-title">Panel Auditor</h1>
         <div></div>
     </div>
-
-    <!-- ======== CONTENEDOR ======== -->
     <div class="rc-container">
-
-        <!-- ======== OPCIONES DEL AUDITOR ======== -->
-        <div class="audit-section">
-            <div class="rc-list-card">
-
-                <a href="/auditor/realizar" class="rc-list-item">
-                    <span>Realizar Auditoría</span>
-                    <span class="rc-chevron"></span>
-                </a>
-
-                <a href="/auditor/historial" class="rc-list-item">
-                    <span>Revisar Historial</span>
-                    <span class="rc-chevron"></span>
-                </a>
-
-            </div>
+        <div style="text-align:center; margin-bottom:20px;">
+            <p>Bienvenido: <strong>{{ usuario }}</strong></p>
         </div>
-
+        <div class="rc-list-card">
+            <a href="/auditor/realizar" class="rc-list-item">📝 Realizar Auditoría ›</a>
+            <a href="/auditor/historial" class="rc-list-item">📂 Revisar Historial ›</a>
+        </div>
     </div>
-
 </body>
-
+</html>
