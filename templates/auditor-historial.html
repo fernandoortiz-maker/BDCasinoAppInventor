@@ -105,9 +105,8 @@
                 {{ auditoria.resumen or 'AuditorÃ­a ISO 14001' }}
             </div>
 
-            <button onclick="window.open('/api/pdf_auditoria/{{ auditoria.id_auditoria}}', '_blank')" class="btn-view-pdf">
-                ðŸ“„ Ver Reporte PDF
-            </button>
+            <button onclick="window.open('/api/pdf_auditoria/{{ auditoria.id_auditoria }}', '_blank')"
+                class="btn-view-pdf">
         </div>
         {% endfor %}
         {% else %}
