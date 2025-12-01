@@ -218,6 +218,10 @@ def api_guardar_checklist():
         return jsonify({"exito": False, "mensaje": str(e)}), 400
 
 # E. API PARA GENERAR Y DESCARGAR EL PDF
+@app.route("/auditor/ver_pdf/<int:id_auditoria>")
+def ver_pdf_page(id_auditoria):
+    return render_template("auditor-ver-pdf.html", id_auditoria=id_auditoria)
+
 @app.route("/api/pdf_auditoria/<int:id_auditoria>", methods=["GET"])
 def generar_pdf(id_auditoria):
     datos = obtener_datos_auditoria(id_auditoria)
