@@ -1,4 +1,4 @@
-from flask import Flask, session, jsonify, request, send_file, send_from_directory
+from flask import Flask, session, jsonify, request, send_file, render_template, send_from_directory
 import os
 import json
 import io
@@ -19,7 +19,7 @@ from db_config import (
 )
 
 # --- 1. INICIALIZACIÓN ---
-app = Flask(__name__, static_folder="static", static_url_path="")
+app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 # --- 2. CONFIGURACIÓN DE COOKIES (CRÍTICO PARA APP INVENTOR) ---
@@ -142,34 +142,45 @@ def api_transaccion():
 # SECCIÓN 3: AUDITORÍA Y CHECKLIST (HTML + PDF)
 # ==========================================
 
-# A. RUTA PARA VER EL HTML (Desde App Inventor)
-@app.route("/ver_checklist")
-def ver_checklist():
-    # Busca 'auditoria.html' dentro de la carpeta 'static'
-    return send_from_directory("static", "auditoria.html")
+# A. RUTA PARA VER EL MENÚ DEL AUDITOR
+@app.route("/auditor")
+def panel_auditor():
+    # Detectar usuario desde App Inventor
+    user_email = request.args.get('user_email')
+    if user_email:
+        session["user_id"] = user_email
+        
+    usuario_actual = session.get("user_id", "Invitado")
+    return render_template("auditoria.html", usuario=usuario_actual)
 
-# B. GUARDAR LOS DATOS DEL CHECKLIST
+# B. RUTA PARA VER EL FORMULARIO CHECKLIST
+@app.route("/auditor/realizar")
+def realizar_auditoria():
+    return render_template("auditor-realizar.html")
+
+# C. RUTA PARA VER EL HISTORIAL
+@app.route("/auditor/historial")
+def historial_auditoria():
+    return render_template("auditor-historial.html")
+
+# D. API PARA GUARDAR LOS DATOS EN NEON
 @app.route("/api/guardar_checklist", methods=["POST"])
 def api_guardar_checklist():
     try:
         data = request.get_json(force=True)
-        email = data.get("email")
-        resumen = data.get("resumen", "Auditoría General")
+        email = session.get("user_id") or data.get("email")
         
-        # El checklist puede venir como diccionario directo o string
-        checklist = data.get("checklist")
-        if isinstance(checklist, str):
-            # Si App Inventor mandó un string JSON, lo parseamos para validar
-            checklist = json.loads(checklist)
-            
-        # Volvemos a convertir a string JSON para guardar en la BD (tipo JSONB)
+        if not email:
+            return jsonify({"exito": False, "mensaje": "No logueado"}), 401
+
+        checklist = data.get("respuestas")
+        # Convertimos el diccionario a texto para guardar en BD
         checklist_json = json.dumps(checklist)
         
-        id_audit = guardar_auditoria(email, resumen, checklist_json)
+        id_audit = guardar_auditoria(email, f"Auditoría {data.get('fecha')}", checklist_json)
         
         if id_audit:
             # URL para descargar el PDF
-            # OJO: Cambia esto por tu dominio real si es necesario, o usa ruta relativa
             pdf_url = f"/api/pdf_auditoria/{id_audit}"
             return jsonify({"exito": True, "mensaje": "Guardado", "pdf_url": pdf_url})
         else:
@@ -179,7 +190,7 @@ def api_guardar_checklist():
         print(f"Error checklist: {e}")
         return jsonify({"exito": False, "mensaje": str(e)}), 400
 
-# C. GENERAR EL PDF
+# E. API PARA GENERAR Y DESCARGAR EL PDF
 @app.route("/api/pdf_auditoria/<int:id_auditoria>", methods=["GET"])
 def generar_pdf(id_auditoria):
     datos = obtener_datos_auditoria(id_auditoria)
@@ -241,7 +252,7 @@ def generar_pdf(id_auditoria):
     return send_file(
         buffer, 
         as_attachment=True, 
-        download_name=f"auditoria_{id_auditoria}.pdf", 
+        download_name=f"reporte_{id_auditoria}.pdf", 
         mimetype='application/pdf'
     )
 
