@@ -3,9 +3,20 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Panel Auditor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/auditor.css') }}">
+
+    <style>
+        /* PROTECCIÓN: Deshabilitar selección de texto */
+        * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+    </style>
 </head>
 
 <body>
@@ -21,6 +32,36 @@
         <a href="/auditor/realizar" class="rc-list-item">📝 Realizar Auditoría ›</a>
         <a href="/auditor/historial" class="rc-list-item">📂 Revisar Historial ›</a>
     </div>
+
+    <script>
+        // PROTECCIÓN: Deshabilitar clic derecho
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // PROTECCIÓN: Deshabilitar teclas de desarrollador
+        document.addEventListener('keydown', function (e) {
+            if (e.keyCode == 123 ||
+                (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) ||
+                (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // PROTECCIÓN: Deshabilitar copiar
+        document.addEventListener('copy', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // PROTECCIÓN: Deshabilitar arrastrar
+        document.addEventListener('dragstart', function (e) {
+            e.preventDefault();
+            return false;
+        });
+    </script>
 </body>
 
 </html>

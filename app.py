@@ -15,7 +15,8 @@ from db_config import (
     actualizar_datos_usuario, 
     realizar_transaccion_saldo,
     guardar_auditoria,
-    obtener_datos_auditoria
+    obtener_datos_auditoria,
+    obtener_historial_auditorias
 )
 
 # --- 1. INICIALIZACIÓN ---
@@ -170,7 +171,16 @@ def realizar_auditoria():
 # C. RUTA PARA VER EL HISTORIAL
 @app.route("/auditor/historial")
 def historial_auditoria():
-    return render_template("auditor-historial.html")
+    # Obtener email del usuario autenticado
+    usuario_email = session.get("user_id", None)
+    
+    if not usuario_email or usuario_email == "Invitado":
+        return render_template("auditor-historial.html", auditorias=[])
+    
+    # Obtener historial de auditorías desde la BD
+    auditorias = obtener_historial_auditorias(usuario_email)
+    return render_template("auditor-historial.html", auditorias=auditorias)
+
 
 # D. API PARA GUARDAR LOS DATOS EN NEON
 @app.route("/api/guardar_checklist", methods=["POST"])

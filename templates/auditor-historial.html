@@ -1,20 +1,193 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-    <title>Historial</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Historial de Auditorías</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/auditor.css') }}">
+
+    <style>
+        /* PROTECCIÓN: Deshabilitar selección de texto */
+        * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        /* Estilos para las tarjetas de auditoría */
+        .audit-card {
+            background: #2a2a2a;
+            border: 1px solid #ab925c;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+
+        .audit-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(171, 146, 92, 0.3);
+        }
+
+        .audit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .audit-date {
+            color: #ab925c;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .audit-id {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .audit-summary {
+            color: #ccc;
+            margin: 10px 0;
+        }
+
+        .btn-view-pdf {
+            background: linear-gradient(135deg, #ab925c, #c9a961);
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .btn-view-pdf:hover {
+            background: linear-gradient(135deg, #c9a961, #ab925c);
+        }
+
+        .empty-state {
+            text-align: center;
+            margin-top: 100px;
+            color: #888;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
+
 <body>
     <div class="rc-header">
         <a href="/auditor" class="rc-back">‹</a>
-        <h1 class="rc-screen-title">Historial</h1>
+        <h1 class="rc-screen-title">Historial de Auditorías</h1>
         <div></div>
     </div>
+
     <div class="rc-container">
-        <p style="text-align:center; margin-top:50px; color:#ccc;">
-            🚧 Historial de auditorías en construcción...
-        </p>
+        {% if auditorias and auditorias|length > 0 %}
+        {% for auditoria in auditorias %}
+        <div class="audit-card">
+            <div class="audit-header">
+                <span class="audit-date">📅 {{ auditoria.fecha_auditoria.strftime('%d/%m/%Y %H:%M') }}</span>
+                <span class="audit-id">ID: #{{ auditoria.id_auditoria }}</span>
+            </div>
+
+            <div class="audit-summary">
+                {{ auditoria.resumen or 'Auditoría ISO 14001' }}
+            </div>
+
+            <a href="/api/pdf_auditoria/{{ auditoria.id_auditoria }}" class="btn-view-pdf">
+                📄 Ver Reporte PDF
+            </a>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📂</div>
+            <p>No hay auditorías registradas</p>
+            <p style="margin-top:20px;">
+                <a href="/auditor/realizar" style="color:#ab925c;">Realizar tu primera auditoría ›</a>
+            </p>
+        </div>
+        {% endif %}
     </div>
+
+    <script>
+        // PROTECCIÓN: Deshabilitar clic derecho
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // PROTECCIÓN: Deshabilitar teclas de desarrollador
+        document.addEventListener('keydown', function (e) {
+            // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S, Ctrl+Shift+C
+            if (e.keyCode == 123 ||
+                (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) ||
+                (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // PROTECCIÓN: Detectar DevTools
+        (function () {
+            const devtools = {
+                isOpen: false,
+                orientation: undefined
+            };
+
+            const threshold = 160;
+            const emitEvent = (state, orientation) => {
+                if (state) {
+                    window.location.href = '/auditor';
+                }
+            };
+
+            setInterval(() => {
+                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+                const orientation = widthThreshold ? 'vertical' : 'horizontal';
+
+                if (!(heightThreshold && widthThreshold) &&
+                    ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) ||
+                        widthThreshold || heightThreshold)) {
+                    if (!devtools.isOpen || devtools.orientation !== orientation) {
+                        emitEvent(true, orientation);
+                    }
+                    devtools.isOpen = true;
+                    devtools.orientation = orientation;
+                } else {
+                    if (devtools.isOpen) {
+                        emitEvent(false, undefined);
+                    }
+                    devtools.isOpen = false;
+                    devtools.orientation = undefined;
+                }
+            }, 500);
+        })();
+
+        // PROTECCIÓN: Deshabilitar copiar
+        document.addEventListener('copy', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // PROTECCIÓN: Deshabilitar arrastrar
+        document.addEventListener('dragstart', function (e) {
+            e.preventDefault();
+            return false;
+        });
+    </script>
 </body>
+
 </html>
