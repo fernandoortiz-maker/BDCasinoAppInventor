@@ -178,7 +178,15 @@ def historial_auditoria():
         return render_template("auditor-historial.html", auditorias=[])
     
     # Obtener historial de auditorías desde la BD
-    auditorias = obtener_historial_auditorias(usuario_email)
+    try:
+        auditorias = obtener_historial_auditorias(usuario_email)
+        if auditorias is None:
+            auditorias = []
+        print(f"DEBUG: Auditorias recuperadas: {len(auditorias)}")
+    except Exception as e:
+        print(f"ERROR recuperando historial: {e}")
+        auditorias = []
+        
     return render_template("auditor-historial.html", auditorias=auditorias)
 
 
