@@ -310,7 +310,7 @@
                 const mensaje = document.getElementById('mensaje');
 
                 if (resultado.exito) {
-                    mensaje.innerHTML = `✅ Auditoría guardada. <a href="${resultado.pdf_url}" style="color:#ab925c; text-decoration:underline;">Descargar PDF</a>`;
+                    mensaje.innerHTML = `✅ Auditoría guardada. <button onclick="window.open('${resultado.pdf_url}', '_blank')" style="background:linear-gradient(135deg,#ab925c,#c9a961); color:#1a1a1a; border:none; padding:8px 16px; border-radius:5px; cursor:pointer; font-weight:bold;">Ver PDF 📄</button>`;
                     this.reset();
                     window.scrollTo(0, 0);
                 } else {
