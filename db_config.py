@@ -190,20 +190,16 @@ def obtener_historial_auditorias(email):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         sql = """
-            SELECT a.id_auditoria, a.fecha_auditoria, a.resumen,
-                   jsonb_object_keys(a.datos_auditoria) as total_preguntas
+            SELECT a.id_auditoria, a.fecha_auditoria, a.resumen
             FROM Auditoria a
             JOIN Usuario u ON a.id_usuario = u.id_usuario
             WHERE u.email = %s
             ORDER BY a.fecha_auditoria DESC
         """
         cursor.execute(sql, (email,))
-        # Obtener todos los resultados
-        auditorias = []
-        for row in cursor.fetchall():
-            auditorias.append(dict(row))
+        auditorias = cursor.fetchall()
         conn.close()
-        return auditorias
+        return [dict(row) for row in auditorias]
     except Exception as e:
         print(f"Error historial: {e}")
         return []

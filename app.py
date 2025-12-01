@@ -270,7 +270,7 @@ def generar_pdf(id_auditoria):
     
     return send_file(
         buffer, 
-        as_attachment=True, 
+        as_attachment=False,  # Mostrar en navegador en lugar de descargar
         download_name=f"reporte_{id_auditoria}.pdf", 
         mimetype='application/pdf'
     )
