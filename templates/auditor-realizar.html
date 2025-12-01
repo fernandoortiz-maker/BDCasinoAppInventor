@@ -1,11 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Realizar Auditoría</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/auditor.css') }}">
+    <style>
+        * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+    </style>
 </head>
+
 <body>
     <div class="rc-header">
         <a href="/auditor" class="rc-back">‹</a>
@@ -19,13 +30,14 @@
             <div class="section-title">📋 INFORMACIÓN GENERAL</div>
             <div class="question-block">
                 <label class="question-text">Fecha de la auditoría:</label>
-                <input type="date" id="fecha" name="fecha" required style="width:100%; padding:10px; background:#2a2a2a; border:1px solid #ab925c; color:#fff; border-radius:5px;">
+                <input type="date" id="fecha" name="fecha" required
+                    style="width:100%; padding:10px; background:#2a2a2a; border:1px solid #ab925c; color:#fff; border-radius:5px;">
             </div>
 
             <!-- Contenedor dinámico para las preguntas -->
             <div id="cuestionario"></div>
 
-            <button type="submit" class="btn-generate-pdf">📄 Generar Reporte PDF</button>
+            <button type="submit" class="btn-generate-pdf">✅ Terminar Auditoría</button>
         </form>
 
         <div id="mensaje" style="margin-top:20px; text-align:center; color:#ab925c;"></div>
@@ -253,12 +265,12 @@
         var cuestionario = document.getElementById('cuestionario');
         var contador = 0;
 
-        datosAuditoria.forEach(function(item) {
+        datosAuditoria.forEach(function (item) {
             if (item.type === "titulo") {
                 cuestionario.innerHTML += `<div class="section-title">${item.texto}</div>`;
             } else if (item.type === "grid") {
                 cuestionario.innerHTML += `<div style="margin-top:15px; font-weight:bold; color:#ab925c;">${item.titulo}</div>`;
-                item.filas.forEach(function(pregunta) {
+                item.filas.forEach(function (pregunta) {
                     contador++;
                     cuestionario.innerHTML += crearPregunta('q' + contador, pregunta);
                 });
@@ -266,12 +278,12 @@
         });
 
         // Manejo del formulario
-        document.getElementById('formAuditoria').addEventListener('submit', async function(e) {
+        document.getElementById('formAuditoria').addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             const formData = new FormData(this);
             const respuestas = {};
-            
+
             // Recopilar todas las respuestas
             for (let [key, value] of formData.entries()) {
                 if (key !== 'fecha') {
@@ -281,22 +293,22 @@
                     respuestas[pregunta] = value;
                 }
             }
-            
+
             const datos = {
                 fecha: formData.get('fecha'),
                 respuestas: respuestas
             };
-            
+
             try {
                 const response = await fetch('/api/guardar_checklist', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(datos)
                 });
-                
+
                 const resultado = await response.json();
                 const mensaje = document.getElementById('mensaje');
-                
+
                 if (resultado.exito) {
                     mensaje.innerHTML = `✅ Auditoría guardada. <a href="${resultado.pdf_url}" style="color:#ab925c; text-decoration:underline;">Descargar PDF</a>`;
                     this.reset();
@@ -308,6 +320,11 @@
                 document.getElementById('mensaje').innerHTML = `❌ Error de conexión: ${error}`;
             }
         });
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', e => { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) || (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) { e.preventDefault(); } });
+        document.addEventListener('copy', e => e.preventDefault());
+        document.addEventListener('dragstart', e => e.preventDefault());
     </script>
 </body>
+
 </html>
