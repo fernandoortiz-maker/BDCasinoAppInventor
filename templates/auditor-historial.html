@@ -97,96 +97,83 @@
         {% for auditoria in auditorias %}
         <div class="audit-card">
             <div class="audit-header">
-                <span class="audit-date">ðŸ“… {{ auditoria.fecha_auditoria.strftime('%d/%m/%Y %H:%M') }}</span>
+                <span class="audit-date">📅 {{ auditoria.fecha_auditoria.strftime('%d/%m/%Y %H:%M') }}</span>
                 <span class="audit-id">ID: #{{ auditoria.id_auditoria }}</span>
+                <p>No hay auditorías registradas</p>
+                <p style="margin-top:20px;">
+                    <a href="/auditor/realizar" style="color:#ab925c;">Realizar tu primera auditoría ›</a>
+                </p>
             </div>
-
-            <div class="audit-summary">
-                {{ auditoria.resumen or 'AuditorÃ­a ISO 14001' }}
-            </div>
-
-            <button onclick="window.open('/api/pdf_auditoria/{{ auditoria.id_auditoria }}', '_blank')"
-                class="btn-view-pdf">
+            {% endif %}
         </div>
-        {% endfor %}
-        {% else %}
-        <div class="empty-state">
-            <div class="empty-state-icon">ðŸ“‚</div>
-            <p>No hay auditorÃ­as registradas</p>
-            <p style="margin-top:20px;">
-                <a href="/auditor/realizar" style="color:#ab925c;">Realizar tu primera auditorÃ­a â€º</a>
-            </p>
-        </div>
-        {% endif %}
-    </div>
 
-    <script>
-        // PROTECCIÃ“N: Deshabilitar clic derecho
-        document.addEventListener('contextmenu', function (e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // PROTECCIÃ“N: Deshabilitar teclas de desarrollador
-        document.addEventListener('keydown', function (e) {
-            // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S, Ctrl+Shift+C
-            if (e.keyCode == 123 ||
-                (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) ||
-                (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) {
+        <script>
+            // PROTECCIÓN: Deshabilitar clic derecho
+            document.addEventListener('contextmenu', function (e) {
                 e.preventDefault();
                 return false;
-            }
-        });
+            });
 
-        // PROTECCIÃ“N: Detectar DevTools
-        (function () {
-            const devtools = {
-                isOpen: false,
-                orientation: undefined
-            };
-
-            const threshold = 160;
-            const emitEvent = (state, orientation) => {
-                if (state) {
-                    window.location.href = '/auditor';
+            // PROTECCIÓN: Deshabilitar teclas de desarrollador
+            document.addEventListener('keydown', function (e) {
+                // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S, Ctrl+Shift+C
+                if (e.keyCode == 123 ||
+                    (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) ||
+                    (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) {
+                    e.preventDefault();
+                    return false;
                 }
-            };
+            });
 
-            setInterval(() => {
-                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-                const orientation = widthThreshold ? 'vertical' : 'horizontal';
+            // PROTECCIÓN: Detectar DevTools
+            (function () {
+                const devtools = {
+                    isOpen: false,
+                    orientation: undefined
+                };
 
-                if (!(heightThreshold && widthThreshold) &&
-                    ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) ||
-                        widthThreshold || heightThreshold)) {
-                    if (!devtools.isOpen || devtools.orientation !== orientation) {
-                        emitEvent(true, orientation);
+                const threshold = 160;
+                const emitEvent = (state, orientation) => {
+                    if (state) {
+                        window.location.href = '/auditor';
                     }
-                    devtools.isOpen = true;
-                    devtools.orientation = orientation;
-                } else {
-                    if (devtools.isOpen) {
-                        emitEvent(false, undefined);
+                };
+
+                setInterval(() => {
+                    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+                    const orientation = widthThreshold ? 'vertical' : 'horizontal';
+
+                    if (!(heightThreshold && widthThreshold) &&
+                        ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) ||
+                            widthThreshold || heightThreshold)) {
+                        if (!devtools.isOpen || devtools.orientation !== orientation) {
+                            emitEvent(true, orientation);
+                        }
+                        devtools.isOpen = true;
+                        devtools.orientation = orientation;
+                    } else {
+                        if (devtools.isOpen) {
+                            emitEvent(false, undefined);
+                        }
+                        devtools.isOpen = false;
+                        devtools.orientation = undefined;
                     }
-                    devtools.isOpen = false;
-                    devtools.orientation = undefined;
-                }
-            }, 500);
-        })();
+                }, 500);
+            })();
 
-        // PROTECCIÃ“N: Deshabilitar copiar
-        document.addEventListener('copy', function (e) {
-            e.preventDefault();
-            return false;
-        });
+            // PROTECCIÓN: Deshabilitar copiar
+            document.addEventListener('copy', function (e) {
+                e.preventDefault();
+                return false;
+            });
 
-        // PROTECCIÃ“N: Deshabilitar arrastrar
-        document.addEventListener('dragstart', function (e) {
-            e.preventDefault();
-            return false;
-        });
-    </script>
+            // PROTECCIÓN: Deshabilitar arrastrar
+            document.addEventListener('dragstart', function (e) {
+                e.preventDefault();
+                return false;
+            });
+        </script>
 </body>
 
 </html>
