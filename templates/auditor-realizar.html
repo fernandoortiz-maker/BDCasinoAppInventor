@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realizar Auditoría</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auditor.css') }}">
+</head>
+<body>
+    <div class="rc-header">
+        <a href="/auditor" class="rc-back">‹</a>
+        <h1 class="rc-screen-title">Nueva Auditoría</h1>
+        <div></div>
+    </div>
+
+    <div class="rc-container">
+        <form id="formAuditoria">
+            <!-- Información General -->
+            <div class="section-title">📋 INFORMACIÓN GENERAL</div>
+            <div class="question-block">
+                <label class="question-text">Fecha de la auditoría:</label>
+                <input type="date" id="fecha" name="fecha" required style="width:100%; padding:10px; background:#2a2a2a; border:1px solid #ab925c; color:#fff; border-radius:5px;">
+            </div>
+
+            <!-- Sección 1: Política Ambiental -->
+            <div class="section-title">🌍 1. POLÍTICA AMBIENTAL</div>
+            
+            <div class="question-block">
+                <p class="question-text">1.1 ¿La organización cuenta con una política ambiental documentada?</p>
+                <label class="option-label">
+                    <input type="radio" name="q1_1" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q1_1" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q1_1" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <div class="question-block">
+                <p class="question-text">1.2 ¿La política ambiental está disponible para todas las partes interesadas?</p>
+                <label class="option-label">
+                    <input type="radio" name="q1_2" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q1_2" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q1_2" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <!-- Sección 2: Planificación -->
+            <div class="section-title">📊 2. PLANIFICACIÓN</div>
+            
+            <div class="question-block">
+                <p class="question-text">2.1 ¿Se han identificado los aspectos ambientales significativos?</p>
+                <label class="option-label">
+                    <input type="radio" name="q2_1" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q2_1" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q2_1" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <div class="question-block">
+                <p class="question-text">2.2 ¿Existen objetivos ambientales medibles y coherentes con la política?</p>
+                <label class="option-label">
+                    <input type="radio" name="q2_2" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q2_2" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q2_2" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <!-- Sección 3: Implementación -->
+            <div class="section-title">⚙️ 3. IMPLEMENTACIÓN Y OPERACIÓN</div>
+            
+            <div class="question-block">
+                <p class="question-text">3.1 ¿Se han definido roles y responsabilidades ambientales?</p>
+                <label class="option-label">
+                    <input type="radio" name="q3_1" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q3_1" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q3_1" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <div class="question-block">
+                <p class="question-text">3.2 ¿El personal está capacitado en temas ambientales relevantes?</p>
+                <label class="option-label">
+                    <input type="radio" name="q3_2" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q3_2" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q3_2" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <div class="question-block">
+                <p class="question-text">3.3 ¿Existen procedimientos documentados para las operaciones críticas?</p>
+                <label class="option-label">
+                    <input type="radio" name="q3_3" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q3_3" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q3_3" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <!-- Sección 4: Verificación -->
+            <div class="section-title">✔️ 4. VERIFICACIÓN</div>
+            
+            <div class="question-block">
+                <p class="question-text">4.1 ¿Se monitorean y miden las operaciones con impacto ambiental?</p>
+                <label class="option-label">
+                    <input type="radio" name="q4_1" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q4_1" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q4_1" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <div class="question-block">
+                <p class="question-text">4.2 ¿Se realizan auditorías internas periódicas del sistema ambiental?</p>
+                <label class="option-label">
+                    <input type="radio" name="q4_2" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q4_2" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q4_2" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <!-- Sección 5: Mejora Continua -->
+            <div class="section-title">📈 5. MEJORA CONTINUA</div>
+            
+            <div class="question-block">
+                <p class="question-text">5.1 ¿Se implementan acciones correctivas y preventivas?</p>
+                <label class="option-label">
+                    <input type="radio" name="q5_1" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q5_1" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q5_1" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <div class="question-block">
+                <p class="question-text">5.2 ¿La dirección revisa periódicamente el sistema de gestión ambiental?</p>
+                <label class="option-label">
+                    <input type="radio" name="q5_2" value="Cumple" required>
+                    <span>✅ Cumple</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q5_2" value="Parcialmente">
+                    <span>⚠️ Parcialmente</span>
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="q5_2" value="No Cumple">
+                    <span>❌ No Cumple</span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-generate-pdf">📄 Generar Reporte PDF</button>
+        </form>
+
+        <div id="mensaje" style="margin-top:20px; text-align:center; color:#ab925c;"></div>
+    </div>
+
+    <script>
+        document.getElementById('formAuditoria').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const respuestas = {};
+            
+            // Recopilar todas las respuestas
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'fecha') {
+                    const pregunta = document.querySelector(`input[name="${key}"]`)
+                        .closest('.question-block')
+                        .querySelector('.question-text').textContent;
+                    respuestas[pregunta] = value;
+                }
+            }
+            
+            const datos = {
+                fecha: formData.get('fecha'),
+                respuestas: respuestas
+            };
+            
+            try {
+                const response = await fetch('/api/guardar_checklist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+                
+                const resultado = await response.json();
+                const mensaje = document.getElementById('mensaje');
+                
+                if (resultado.exito) {
+                    mensaje.innerHTML = `✅ Auditoría guardada. <a href="${resultado.pdf_url}" style="color:#ab925c; text-decoration:underline;">Descargar PDF</a>`;
+                    this.reset();
+                } else {
+                    mensaje.innerHTML = `❌ Error: ${resultado.mensaje}`;
+                }
+            } catch (error) {
+                document.getElementById('mensaje').innerHTML = `❌ Error de conexión: ${error}`;
+            }
+        });
+    </script>
+</body>
+</html>
