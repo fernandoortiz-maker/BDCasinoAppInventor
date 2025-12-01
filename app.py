@@ -149,9 +149,18 @@ def panel_auditor():
     user_email = request.args.get('user_email')
     if user_email:
         session["user_id"] = user_email
+    
+    # Obtener email del usuario
+    usuario_email = session.get("user_id", None)
+    
+    # Obtener el nombre del usuario desde la BD
+    if usuario_email and usuario_email != "Invitado":
+        perfil = obtener_perfil(usuario_email)
+        usuario_nombre = perfil['nombre'] if perfil else "Invitado"
+    else:
+        usuario_nombre = "Invitado"
         
-    usuario_actual = session.get("user_id", "Invitado")
-    return render_template("auditoria.html", usuario=usuario_actual)
+    return render_template("auditoria.html", usuario=usuario_nombre)
 
 # B. RUTA PARA VER EL FORMULARIO CHECKLIST
 @app.route("/auditor/realizar")
