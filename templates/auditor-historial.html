@@ -1,14 +1,14 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Historial de AuditorÃ­as</title>
+    <title>Historial de Auditorías</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/auditor.css') }}">
 
     <style>
-        /* PROTECCIÃ“N: Deshabilitar selecciÃ³n de texto */
+        /* PROTECCIÓN: Deshabilitar selección de texto */
         * {
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -17,7 +17,7 @@
             -webkit-touch-callout: none;
         }
 
-        /* Estilos para las tarjetas de auditorÃ­a */
+        /* Estilos para las tarjetas de auditoría */
         .audit-card {
             background: #2a2a2a;
             border: 1px solid #ab925c;
@@ -87,93 +87,86 @@
 
 <body>
     <div class="rc-header">
-        <a href="/auditor" class="rc-back">â€¹</a>
-        <h1 class="rc-screen-title">Historial de AuditorÃ­as</h1>
+        <a href="/auditor" class="rc-back">‹</a>
+        <h1 class="rc-screen-title">Historial de Auditorías</h1>
         <div></div>
     </div>
 
     <div class="rc-container">
-        {% if auditorias and auditorias|length > 0 %}
-        {% for auditoria in auditorias %}
-        <div class="audit-card">
-            <div class="audit-header">
-                <span class="audit-date">📅 {{ auditoria.fecha_auditoria.strftime('%d/%m/%Y %H:%M') }}</span>
-                <span class="audit-id">ID: #{{ auditoria.id_auditoria }}</span>
-                <p>No hay auditorías registradas</p>
-                <p style="margin-top:20px;">
-                    <a href="/auditor/realizar" style="color:#ab925c;">Realizar tu primera auditoría ›</a>
-                </p>
-            </div>
-            {% endif %}
-        </div>
+        <p style="margin-top:20px;">
+            <a href="/auditor/realizar" style="color:#ab925c;">Realizar tu primera auditoría ›</a>
+        </p>
+    </div>
+    {% endif %}
+    </div>
 
-        <script>
-            // PROTECCIÓN: Deshabilitar clic derecho
-            document.addEventListener('contextmenu', function (e) {
+    <script>
+        // PROTECCIÓN: Deshabilitar clic derecho
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // PROTECCIÓN: Deshabilitar teclas de desarrollador
+        document.addEventListener('keydown', function (e) {
+            // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S, Ctrl+Shift+C
+            if (e.keyCode == 123 ||
+                (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) ||
+                (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) {
                 e.preventDefault();
                 return false;
-            });
+            }
+        });
 
-            // PROTECCIÓN: Deshabilitar teclas de desarrollador
-            document.addEventListener('keydown', function (e) {
-                // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S, Ctrl+Shift+C
-                if (e.keyCode == 123 ||
-                    (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) ||
-                    (e.ctrlKey && (e.keyCode == 85 || e.keyCode == 83))) {
-                    e.preventDefault();
-                    return false;
+        // PROTECCIÓN: Detectar DevTools
+        (function () {
+            const devtools = {
+                isOpen: false,
+                orientation: undefined
+            };
+
+            const threshold = 160;
+            const emitEvent = (state, orientation) => {
+                if (state) {
+                    window.location.href = '/auditor';
                 }
-            });
+            };
 
-            // PROTECCIÓN: Detectar DevTools
-            (function () {
-                const devtools = {
-                    isOpen: false,
-                    orientation: undefined
-                };
+            setInterval(() => {
+                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+                const orientation = widthThreshold ? 'vertical' : 'horizontal';
 
-                const threshold = 160;
-                const emitEvent = (state, orientation) => {
-                    if (state) {
-                        window.location.href = '/auditor';
+                if (!(heightThreshold && widthThreshold) &&
+                    ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) ||
+                        widthThreshold || heightThreshold)) {
+                    if (!devtools.isOpen || devtools.orientation !== orientation) {
+                        emitEvent(true, orientation);
                     }
-                };
-
-                setInterval(() => {
-                    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-                    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-                    const orientation = widthThreshold ? 'vertical' : 'horizontal';
-
-                    if (!(heightThreshold && widthThreshold) &&
-                        ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) ||
-                            widthThreshold || heightThreshold)) {
-                        if (!devtools.isOpen || devtools.orientation !== orientation) {
-                            emitEvent(true, orientation);
-                        }
-                        devtools.isOpen = true;
-                        devtools.orientation = orientation;
-                    } else {
-                        if (devtools.isOpen) {
-                            emitEvent(false, undefined);
-                        }
-                        devtools.isOpen = false;
-                        devtools.orientation = undefined;
+                    devtools.isOpen = true;
+                    devtools.orientation = orientation;
+                } else {
+                    if (devtools.isOpen) {
+                        emitEvent(false, undefined);
                     }
-                }, 500);
-            })();
+                    devtools.isOpen = false;
+                    devtools.orientation = undefined;
+                }
+            }, 500);
+        })();
 
-            // PROTECCIÓN: Deshabilitar copiar
-            document.addEventListener('copy', function (e) {
-                e.preventDefault();
-                return false;
-            });
+        // PROTECCIÓN: Deshabilitar copiar
+        document.addEventListener('copy', function (e) {
+            e.preventDefault();
+            return false;
+        });
 
-            // PROTECCIÓN: Deshabilitar arrastrar
-            document.addEventListener('dragstart', function (e) {
-                e.preventDefault();
-                return false;
-            });
-        </script>
+        // PROTECCIÓN: Deshabilitar arrastrar
+        document.addEventListener('dragstart', function (e) {
+            e.preventDefault();
+            return false;
+        });
+    </script>
 </body>
 
 </html>
