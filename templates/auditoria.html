@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Auditor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/auditor.css') }}">
 </head>
+
 <body>
     <div class="rc-header">
-        <a href="#" class="rc-back"></a> <!-- Sin acción, es el home -->
+        <a href="#" class="rc-back"></a> <!-- Sin acción, es el home 1 -->
         <h1 class="rc-screen-title">Panel Auditor</h1>
         <div></div>
     </div>
@@ -16,10 +18,9 @@
         <div style="text-align:center; margin-bottom:20px;">
             <p>Bienvenido: <strong>{{ usuario }}</strong></p>
         </div>
-        <div class="rc-list-card">
-            <a href="/auditor/realizar" class="rc-list-item">📝 Realizar Auditoría ›</a>
-            <a href="/auditor/historial" class="rc-list-item">📂 Revisar Historial ›</a>
-        </div>
+        <a href="/auditor/realizar" class="rc-list-item">📝 Realizar Auditoría ›</a>
+        <a href="/auditor/historial" class="rc-list-item">📂 Revisar Historial ›</a>
     </div>
 </body>
+
 </html>
