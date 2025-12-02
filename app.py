@@ -244,9 +244,21 @@ def generar_pdf(id_auditoria):
     
     c.line(50, height - 105, 550, height - 105)
     
+
     # --- CONTENIDO ---
     y = height - 130
-    items = datos['datos_auditoria'] # Es un diccionario
+    items = datos['datos_auditoria']
+    
+    # Asegurar que items es un diccionario
+    if isinstance(items, str):
+        try:
+            items = json.loads(items)
+        except Exception as e:
+            print(f"Error parseando JSON: {e}")
+            items = {}
+            
+    if not isinstance(items, dict):
+         items = {}
     
     c.setFont("Helvetica", 9)
     
