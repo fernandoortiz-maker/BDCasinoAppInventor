@@ -203,3 +203,99 @@ def obtener_historial_auditorias(email):
     except Exception as e:
         print(f"Error historial: {e}")
         return []
+
+# --- ADMIN FUNCTIONS ---
+
+def obtener_todos_usuarios():
+    conn = get_db_connection()
+    if not conn: return []
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        sql = """
+            SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.activo, r.nombre as rol
+            FROM Usuario u
+            JOIN Rol r ON u.id_rol = r.id_rol
+            ORDER BY u.id_usuario DESC
+        """
+        cursor.execute(sql)
+        users = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in users]
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        return []
+
+def obtener_juegos():
+    # MOCK: Si no existe tabla Juego, retornamos lista vacía o mock
+    # Idealmente crear tabla: CREATE TABLE Juego (id_juego SERIAL PRIMARY KEY, nombre VARCHAR, descripcion VARCHAR, rtp FLOAT, min_apuesta FLOAT, max_apuesta FLOAT, activo BOOLEAN);
+    conn = get_db_connection()
+    if not conn: return []
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        # Verificar si tabla existe
+        cursor.execute("SELECT to_regclass('public.Juego')")
+        if not cursor.fetchone()[0]:
+            return [] # Tabla no existe
+            
+        sql = "SELECT * FROM Juego ORDER BY id_juego DESC"
+        cursor.execute(sql)
+        games = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in games]
+    except Exception as e:
+        print(f"Error fetching games: {e}")
+        return []
+
+def crear_juego(datos):
+    conn = get_db_connection()
+    if not conn: return False
+    try:
+        cursor = conn.cursor()
+        # Crear tabla si no existe (Auto-migración simple)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS Juego (
+                id_juego SERIAL PRIMARY KEY,
+                nombre VARCHAR(100),
+                descripcion VARCHAR(255),
+                rtp FLOAT,
+                min_apuesta FLOAT,
+                max_apuesta FLOAT,
+                activo BOOLEAN DEFAULT true
+            )
+        """)
+        
+        sql = """
+            INSERT INTO Juego (nombre, descripcion, rtp, min_apuesta, max_apuesta, activo)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(sql, (
+            datos['nombre'], 
+            datos['descripcion'], 
+            float(datos['rtp']), 
+            float(datos['min_apuesta']), 
+            float(datos['max_apuesta']), 
+            datos['activo'] == 'true' or datos['activo'] == True
+        ))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error creating game: {e}")
+        if conn: conn.rollback()
+        return False
+
+def obtener_metricas():
+    conn = get_db_connection()
+    if not conn: return {"total_users": 0, "active_users": 0}
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Usuario")
+        total = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM Usuario WHERE activo = true")
+        active = cursor.fetchone()[0]
+        
+        conn.close()
+        return {"total_users": total, "active_users": active}
+    except Exception:
+        return {"total_users": 0, "active_users": 0}

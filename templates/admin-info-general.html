@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Información General — Royal Crumbs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ===== ENCABEZADO ===== -->
+        <header class="rc-header">
+            <a href="/admin" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Información General</h1>
+            <div></div>
+        </header>
+
+        <!-- ===== TARJETAS DE MÉTRICAS ===== -->
+        <section class="metrics-section">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Usuarios Totales</h3>
+                    <p class="value" id="total-users">--</p>
+                    <span class="percent green">+5%</span>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Usuarios Activos</h3>
+                    <p class="value" id="active-users">--</p>
+                    <span class="percent red">-2%</span>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Depósitos Totales</h3>
+                    <p class="value">$500,000.00</p>
+                    <span class="percent green">+10%</span>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Retiros Totales</h3>
+                    <p class="value">$300,000.00</p>
+                    <span class="percent red">-8%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== JUEGOS POPULARES ===== -->
+        <section class="games-section">
+            <h2 style="color:#ab925c; margin-bottom:15px;">Actividad de Juegos Populares</h2>
+            <div style="background:#2a2a2a; padding:15px; border-radius:8px;">
+                <div class="game-row">
+                    <span>Tragamonedas</span>
+                    <div class="bar">
+                        <div class="fill" style="width: 80%;"></div>
+                    </div>
+                </div>
+                <div class="game-row">
+                    <span>Ruleta</span>
+                    <div class="bar">
+                        <div class="fill" style="width: 60%;"></div>
+                    </div>
+                </div>
+                <div class="game-row">
+                    <span>Blackjack</span>
+                    <div class="bar">
+                        <div class="fill" style="width: 45%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // Cargar métricas reales
+        async function cargarMetricas() {
+            try {
+                const res = await fetch('/api/admin/metrics');
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('total-users').textContent = data.total_users;
+                    document.getElementById('active-users').textContent = data.active_users;
+                }
+            } catch (e) {
+                console.error("Error cargando métricas", e);
+            }
+        }
+        document.addEventListener("DOMContentLoaded", cargarMetricas);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Juegos — Royal Crumbs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ===== ENCABEZADO ===== -->
+        <header class="rc-header">
+            <a href="/admin" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Gestión de juegos</h1>
+            <div></div>
+        </header>
+
+        <!-- FORMULARIO DE JUEGO -->
+        <form class="game-form" id="gameForm">
+            <label>Nombre del Juego</label>
+            <input type="text" name="nombre" placeholder="Ej: Ruleta Europea" required>
+
+            <label>Descripción (Tipo)</label>
+            <input type="text" name="descripcion" placeholder="Ej: Juego de Mesa" required>
+
+            <label>RTP (%)</label>
+            <input type="number" step="0.01" name="rtp" placeholder="Ej: 95.50" required>
+
+            <div style="display: flex; gap: 10px;">
+                <div style="flex:1;">
+                    <label>Apuesta Mínima</label>
+                    <input type="number" step="0.01" name="min_apuesta" placeholder="Ej: 10.00" required>
+                </div>
+                <div style="flex:1;">
+                    <label>Apuesta Máxima</label>
+                    <input type="number" step="0.01" name="max_apuesta" placeholder="Ej: 5000.00" required>
+                </div>
+            </div>
+
+            <label>Estado</label>
+            <select name="activo" required>
+                <option value="true">Activo</option>
+                <option value="false">Inactivo</option>
+            </select>
+
+            <button type="submit" class="btn-gold">Crear Nuevo Juego</button>
+        </form>
+
+        <!-- LISTA DE JUEGOS EXISTENTES -->
+        <section class="game-list">
+            <h2
+                style="color:white; margin-top: 30px; border-top: 1px solid #444; padding-top: 20px; margin-bottom: 20px;">
+                Juegos Existentes</h2>
+            <div id="game-list-container">
+                <p style="text-align: center; color: white;">Cargando juegos...</p>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        const gameForm = document.getElementById("gameForm");
+        const container = document.getElementById("game-list-container");
+
+        // 2. FUNCIÓN PARA CARGAR LA LISTA DE JUEGOS (GET)
+        async function cargarJuegos() {
+            container.innerHTML = `<p style="text-align: center; color: white;">Cargando juegos...</p>`;
+            try {
+                const res = await fetch(`/api/admin/games`);
+                const data = await res.json();
+
+                if (data.error) {
+                    container.innerHTML = `<p style='text-align:center; color: red;'>${data.error}</p>`;
+                    return;
+                }
+
+                if (data.games.length === 0) {
+                    container.innerHTML = "<p style='text-align:center; color: #fff;'>No hay juegos creados.</p>";
+                    return;
+                }
+
+                container.innerHTML = "";
+
+                data.games.forEach(game => {
+                    const statusClass = game.activo ? "active" : "inactive";
+                    const statusText = game.activo ? "Activo" : "Inactivo";
+                    const itemHTML = `
+            <div class="game-item">
+              <div>
+                <h3 style="color:#ab925c;">${game.nombre}</h3>
+                <p>${game.descripcion}</p>
+                <small style="color: #888;">Min: $${game.min_apuesta} / Max: $${game.max_apuesta}</small>
+              </div>
+              <span class="status-btn ${statusClass}" style="border:none;">${statusText}</span>
+            </div>
+          `;
+                    container.insertAdjacentHTML('beforeend', itemHTML);
+                });
+
+            } catch (error) {
+                console.error("Error al cargar juegos:", error);
+                container.innerHTML = "<p style='text-align:center; color: red;'>Error al cargar la lista.</p>";
+            }
+        }
+
+        // 3. FUNCIÓN PARA CREAR JUEGO (POST)
+        gameForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(gameForm);
+            // Convertir FormData a JSON
+            const data = {};
+            formData.forEach((value, key) => data[key] = value);
+
+            const button = gameForm.querySelector("button");
+            button.disabled = true;
+            button.textContent = "Creando...";
+
+            try {
+                const res = await fetch("/api/admin/games", {
+                    method: "POST",
+                    body: JSON.stringify(data),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await res.json();
+
+                if (result.error) {
+                    alert("Error: " + result.error);
+                } else if (result.success) {
+                    alert("¡Juego creado con éxito!");
+                    gameForm.reset();
+                    cargarJuegos();
+                }
+
+            } catch (error) {
+                console.error("Error al crear juego:", error);
+                alert("Error de conexión al crear el juego.");
+            }
+
+            button.disabled = false;
+            button.textContent = "Crear Nuevo Juego";
+        });
+
+        document.addEventListener("DOMContentLoaded", cargarJuegos);
+    </script>
+
+</body>
+
+</html>

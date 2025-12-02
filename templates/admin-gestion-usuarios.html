@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios — Royal Crumbs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ===== ENCABEZADO ===== -->
+        <header class="rc-header">
+            <a href="/admin" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Gestión de Usuarios</h1>
+            <div></div>
+        </header>
+
+        <!-- ===== LISTA DE OPCIONES ===== -->
+        <section class="support-section">
+            <div class="rc-list-card">
+
+                <a href="/admin/usuarios" class="rc-list-item">
+                    <span>Usuarios</span>
+                    <span class="rc-chevron"></span>
+                </a>
+
+                <a href="/admin/administradores" class="rc-list-item">
+                    <span>Administradores</span>
+                    <span class="rc-chevron"></span>
+                </a>
+
+            </div>
+        </section>
+
+    </div>
+</body>
+
+</html>

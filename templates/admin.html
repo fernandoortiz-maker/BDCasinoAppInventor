@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrador — Royal Crumbs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ENCABEZADO -->
+        <header class="rc-header">
+            <a href="/home" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Administrador</h1>
+            <div></div> <!-- espacio vacío para centrar título -->
+        </header>
+
+        <!-- SECCIÓN PRINCIPAL -->
+        <section class="support-section">
+            <div class="rc-list-card">
+
+                <a href="/admin/info-general" class="rc-list-item">
+                    <span>Información General</span>
+                    <span class="rc-chevron"></span>
+                </a>
+
+                <a href="/admin/gestion-usuarios" class="rc-list-item">
+                    <span>Gestión de Usuarios</span>
+                    <span class="rc-chevron"></span>
+                </a>
+
+                <a href="/admin/juegos" class="rc-list-item">
+                    <span>Gestión de Juegos</span>
+                    <span class="rc-chevron"></span>
+                </a>
+
+                <a href="/admin/configuracion" class="rc-list-item">
+                    <span>Configuración del Sistema</span>
+                    <span class="rc-chevron"></span>
+                </a>
+
+                <a href="/admin/promociones" class="rc-list-item">
+                    <span>Configurar Promociones</span>
+                    <span class="rc-chevron"></span>
+                </a>
+
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

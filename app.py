@@ -357,6 +357,91 @@ def generar_pdf(id_auditoria):
         mimetype='application/pdf'
     )
 
+# ==========================================
+# SECCIÓN 4: PANEL DE ADMINISTRADOR
+# ==========================================
+
+def admin_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # En producción, verificaríamos session.get("rol") == "Administrador"
+        # Por ahora, permitimos acceso para desarrollo o si hay sesión
+        if "user_id" not in session:
+             return render_template("index.html") # Redirigir a login si no hay sesión
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route("/admin")
+@admin_required
+def admin_dashboard():
+    return render_template("admin.html")
+
+@app.route("/admin/usuarios")
+@admin_required
+def admin_usuarios():
+    return render_template("admin-usuarios.html")
+
+@app.route("/admin/gestion-usuarios")
+@admin_required
+def admin_gestion_usuarios():
+    # Por ahora redirige directo a la lista de usuarios, 
+    # pero podría tener el menú intermedio si se crean más roles
+    return render_template("admin-gestion-usuarios.html")
+
+@app.route("/admin/juegos")
+@admin_required
+def admin_juegos():
+    return render_template("admin-juegos.html")
+
+@app.route("/admin/info-general")
+@admin_required
+def admin_info_general():
+    return render_template("admin-info-general.html")
+
+@app.route("/admin/promociones")
+@admin_required
+def admin_promociones():
+    return render_template("admin-promociones.html") # Necesita ser creado si no existe
+
+@app.route("/admin/configuracion")
+@admin_required
+def admin_configuracion():
+    return render_template("admin-configuracion.html") # Necesita ser creado
+
+# --- API ENDPOINTS PARA ADMIN ---
+
+@app.route("/api/admin/usuarios", methods=["GET"])
+@admin_required
+def api_admin_usuarios():
+    from db_config import obtener_todos_usuarios
+    users = obtener_todos_usuarios()
+    return jsonify({"users": users})
+
+@app.route("/api/admin/games", methods=["GET", "POST"])
+@admin_required
+def api_admin_games():
+    from db_config import obtener_juegos, crear_juego
+    
+    if request.method == "GET":
+        games = obtener_juegos()
+        return jsonify({"games": games})
+    
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        resultado = crear_juego(data)
+        if resultado:
+            return jsonify({"success": True})
+        return jsonify({"error": "Error al crear juego"}), 500
+
+@app.route("/api/admin/metrics", methods=["GET"])
+@admin_required
+def api_admin_metrics():
+    from db_config import obtener_metricas
+    metrics = obtener_metricas()
+    return jsonify({"success": True, **metrics})
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)

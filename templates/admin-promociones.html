@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Promoción — Royal Crumbs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ===== ENCABEZADO ===== -->
+        <header class="rc-header">
+            <a href="/admin" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Crear Promoción</h1>
+            <div></div>
+        </header>
+
+        <!-- ===== FORMULARIO DE PROMOCIÓN ===== -->
+        <form class="promo-form">
+            <input type="text" placeholder="Nombre de la Promoción" required>
+            <input type="text" placeholder="Tipo de Bono" required>
+            <input type="number" placeholder="Valor del Bono" required>
+            <input type="text" placeholder="Requisitos de Apuesta" required>
+            <input type="number" placeholder="Periodo de Validez (días)" required>
+
+            <button type="button" class="btn-gold">Crear Promoción</button>
+            <button type="submit" class="btn-gold secondary">Guardar</button>
+        </form>
+
+        <!-- ===== PROMOCIONES ACTIVAS ===== -->
+        <section class="promo-list">
+            <h2 style="color:white; margin-bottom:15px;">Promociones Activas</h2>
+
+            <div class="promo-card">
+                <div class="promo-info">
+                    <p class="promo-title">200% Hasta $2000 mxn</p>
+                    <p class="promo-subtitle">Bono de Bienvenida</p>
+                </div>
+                <span class="promo-status">Activo</span>
+            </div>
+
+            <div class="promo-card">
+                <div class="promo-info">
+                    <p class="promo-title">150% Hasta $1500 mxn</p>
+                    <p class="promo-subtitle">Bono Semanal</p>
+                </div>
+                <span class="promo-status">Activo</span>
+            </div>
+
+        </section>
+
+    </div>
+</body>
+
+</html>

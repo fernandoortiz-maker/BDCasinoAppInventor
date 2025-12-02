@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios — Royal Crumbs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ===== ENCABEZADO ===== -->
+        <header class="rc-header">
+            <a href="/admin/gestion-usuarios" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Usuarios (Jugadores)</h1>
+            <div></div>
+        </header>
+
+        <!-- ===== BUSCADOR ===== -->
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Buscar por email o nombre..." />
+        </div>
+
+        <!-- LISTA DE USUARIOS -->
+        <section class="users-list" id="users-list-container">
+            <p style="text-align: center; color: white; padding: 20px;">Cargando usuarios...</p>
+        </section>
+
+    </div>
+
+    <script>
+        // 1. Verificar sesión (Simplificado, idealmente se maneja en backend)
+        // const adminRol = (localStorage.getItem("rol") || "").toLowerCase().trim();
+
+        const container = document.getElementById("users-list-container");
+        const searchInput = document.getElementById("searchInput");
+        let allUsers = [];
+
+        // 2. FUNCIÓN PARA DIBUJAR LA LISTA
+        function dibujarLista(usuarios) {
+            container.innerHTML = "";
+
+            if (usuarios.length === 0) {
+                container.innerHTML = "<p style='text-align:center; color: #fff;'>No se encontraron usuarios.</p>";
+                return;
+            }
+
+            usuarios.forEach(user => {
+                const itemHTML = `
+          <a href="/admin/usuarios/perfil?id=${user.id_usuario}" class="user-item">
+            <div class="user-info">
+              <!-- Placeholder icon -->
+              <div style="width:40px; height:40px; background:#ab925c; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:black;">
+                ${user.nombre.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p class="username">${user.nombre} ${user.apellido}</p>
+                <p class="email">${user.email}</p>
+              </div>
+            </div>
+            <span style="color: ${user.activo ? '#4CAF50' : '#f44336'}; font-weight: bold;">
+              ${user.activo ? 'Activo' : 'Inactivo'}
+            </span>
+          </a>
+        `;
+                container.insertAdjacentHTML('beforeend', itemHTML);
+            });
+        }
+
+        // 3. FUNCIÓN PARA CARGAR DATOS (GET)
+        async function cargarUsuarios() {
+            container.innerHTML = `<p style="text-align: center; color: white;">Cargando usuarios...</p>`;
+            try {
+                const res = await fetch(`/api/admin/usuarios`);
+                const data = await res.json();
+
+                if (data.error) {
+                    container.innerHTML = `<p style='text-align:center; color: red;'>${data.error}</p>`;
+                    return;
+                }
+
+                allUsers = data.users;
+                dibujarLista(allUsers);
+
+            } catch (error) {
+                console.error("Error al cargar usuarios:", error);
+                container.innerHTML = "<p style='text-align:center; color: red;'>Error al cargar la lista.</p>";
+            }
+        }
+
+        // 4. FUNCIONALIDAD DEL BUSCADOR
+        searchInput.addEventListener("input", (e) => {
+            const termino = e.target.value.toLowerCase();
+            const filtrados = allUsers.filter(user =>
+                user.nombre.toLowerCase().includes(termino) ||
+                user.apellido.toLowerCase().includes(termino) ||
+                user.email.toLowerCase().includes(termino)
+            );
+            dibujarLista(filtrados);
+        });
+
+        document.addEventListener("DOMContentLoaded", cargarUsuarios);
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,264 @@
+/* ESTILOS PANEL ADMIN - Royal Crumbs (Basado en Auditor) */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #202020;
+    font-family: sans-serif;
+    color: #fff;
+}
+
+/* --- HEADER --- */
+.rc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #202020;
+    border-bottom: 1px solid #333;
+}
+
+.rc-back {
+    color: #fff;
+    text-decoration: none;
+    font-size: 24px;
+}
+
+.rc-screen-title {
+    font-size: 20px;
+    color: #ab925c;
+}
+
+.rc-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* --- LISTAS Y MENÚS --- */
+.rc-list-card {
+    background: #181818;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.rc-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #333;
+    color: #fff;
+    text-decoration: none;
+    font-size: 16px;
+    transition: background 0.2s;
+}
+
+.rc-list-item:hover {
+    background-color: #2a2a2a;
+    color: #ab925c;
+}
+
+.rc-list-item:last-child {
+    border-bottom: none;
+}
+
+.rc-chevron::after {
+    content: '›';
+    font-size: 20px;
+    color: #666;
+}
+
+.rc-list-item:hover .rc-chevron::after {
+    color: #ab925c;
+}
+
+/* --- FORMULARIOS --- */
+input, select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 5px;
+    color: white;
+    font-size: 16px;
+}
+
+input:focus, select:focus {
+    border-color: #ab925c;
+    outline: none;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: #aaa;
+    font-size: 0.9em;
+}
+
+/* --- BOTONES --- */
+.btn-gold {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #ab925c, #c9a86a);
+    color: #1a1a1a;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.btn-gold:hover {
+    background: linear-gradient(135deg, #c9a86a, #ab925c);
+}
+
+.btn-gold.secondary {
+    background: transparent;
+    border: 1px solid #ab925c;
+    color: #ab925c;
+}
+
+.btn-gold.secondary:hover {
+    background: rgba(171, 146, 92, 0.1);
+}
+
+/* --- TARJETAS DE MÉTRICAS (Info General) --- */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.metric-card {
+    background: #2a2a2a;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #333;
+}
+
+.metric-card h3 {
+    font-size: 0.9em;
+    color: #aaa;
+    margin-bottom: 10px;
+}
+
+.metric-card .value {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.metric-card .percent {
+    font-size: 0.8em;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.percent.green { background: rgba(76, 175, 80, 0.2); color: #4CAF50; }
+.percent.red { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+
+/* --- BARRAS DE PROGRESO (Juegos Populares) --- */
+.game-row {
+    margin-bottom: 15px;
+}
+
+.game-row span {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+}
+
+.bar {
+    height: 8px;
+    background: #444;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fill {
+    height: 100%;
+    background: #ab925c;
+}
+
+/* --- LISTA DE USUARIOS / JUEGOS --- */
+.user-item, .game-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2a2a2a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    text-decoration: none;
+    color: white;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.username { font-weight: bold; color: #ab925c; }
+.email { font-size: 0.8em; color: #888; }
+
+/* --- ESTADO --- */
+.status-btn {
+    padding: 8px 15px;
+    border: 1px solid #444;
+    background: transparent;
+    color: #888;
+    border-radius: 20px;
+    cursor: pointer;
+    margin-right: 5px;
+}
+
+.status-btn.active { border-color: #4CAF50; color: #4CAF50; }
+.status-btn.suspended { border-color: #FF9800; color: #FF9800; }
+.status-btn.blocked { border-color: #f44336; color: #f44336; }
+
+/* --- PROMOCIONES --- */
+.promo-card {
+    background: #2a2a2a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid #ab925c;
+}
+
+.promo-title { font-weight: bold; color: #fff; }
+.promo-subtitle { font-size: 0.9em; color: #888; }
+.promo-status { color: #4CAF50; font-size: 0.8em; font-weight: bold; }
+
+/* --- IP LIST --- */
+.ip-list ul {
+    list-style: none;
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.ip-list li {
+    padding: 10px;
+    border-bottom: 1px solid #333;
+}
+
+.ip-list li:last-child { border-bottom: none; }
