@@ -212,9 +212,10 @@ def obtener_todos_usuarios():
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         sql = """
-            SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.activo, r.nombre as rol
+            SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.activo, r.nombre as rol, s.saldo_actual
             FROM Usuario u
             JOIN Rol r ON u.id_rol = r.id_rol
+            LEFT JOIN Saldo s ON u.id_usuario = s.id_usuario
             ORDER BY u.id_usuario DESC
         """
         cursor.execute(sql)
@@ -225,18 +226,32 @@ def obtener_todos_usuarios():
         print(f"Error fetching users: {e}")
         return []
 
+def obtener_usuario_por_id(id_usuario):
+    conn = get_db_connection()
+    if not conn: return None
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        sql = """
+            SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.activo, r.nombre as rol, s.saldo_actual
+            FROM Usuario u
+            JOIN Rol r ON u.id_rol = r.id_rol
+            LEFT JOIN Saldo s ON u.id_usuario = s.id_usuario
+            WHERE u.id_usuario = %s
+        """
+        cursor.execute(sql, (id_usuario,))
+        user = cursor.fetchone()
+        conn.close()
+        return dict(user) if user else None
+    except Exception as e:
+        print(f"Error fetching user detail: {e}")
+        return None
+
 def obtener_juegos():
-    # MOCK: Si no existe tabla Juego, retornamos lista vacía o mock
-    # Idealmente crear tabla: CREATE TABLE Juego (id_juego SERIAL PRIMARY KEY, nombre VARCHAR, descripcion VARCHAR, rtp FLOAT, min_apuesta FLOAT, max_apuesta FLOAT, activo BOOLEAN);
     conn = get_db_connection()
     if not conn: return []
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        # Verificar si tabla existe
-        cursor.execute("SELECT to_regclass('public.Juego')")
-        if not cursor.fetchone()[0]:
-            return [] # Tabla no existe
-            
+        # Asumimos que la tabla Juego ya existe según el esquema proporcionado
         sql = "SELECT * FROM Juego ORDER BY id_juego DESC"
         cursor.execute(sql)
         games = cursor.fetchall()
@@ -251,19 +266,6 @@ def crear_juego(datos):
     if not conn: return False
     try:
         cursor = conn.cursor()
-        # Crear tabla si no existe (Auto-migración simple)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS Juego (
-                id_juego SERIAL PRIMARY KEY,
-                nombre VARCHAR(100),
-                descripcion VARCHAR(255),
-                rtp FLOAT,
-                min_apuesta FLOAT,
-                max_apuesta FLOAT,
-                activo BOOLEAN DEFAULT true
-            )
-        """)
-        
         sql = """
             INSERT INTO Juego (nombre, descripcion, rtp, min_apuesta, max_apuesta, activo)
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -284,18 +286,76 @@ def crear_juego(datos):
         if conn: conn.rollback()
         return False
 
-def obtener_metricas():
+def obtener_promociones():
     conn = get_db_connection()
-    if not conn: return {"total_users": 0, "active_users": 0}
+    if not conn: return []
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        sql = "SELECT * FROM Bono ORDER BY id_bono DESC"
+        cursor.execute(sql)
+        promos = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in promos]
+    except Exception as e:
+        print(f"Error fetching promos: {e}")
+        return []
+
+def crear_promocion(datos):
+    conn = get_db_connection()
+    if not conn: return False
     try:
         cursor = conn.cursor()
+        sql = """
+            INSERT INTO Bono (nombre_bono, tipo, descripcion, fecha_expiracion, activo)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        # fecha_expiracion puede ser None o string YYYY-MM-DD
+        fecha = datos.get('fecha_expiracion')
+        if not fecha: fecha = None
+        
+        cursor.execute(sql, (
+            datos['nombre_bono'],
+            datos['tipo'],
+            datos['descripcion'],
+            fecha,
+            True # Activo por defecto
+        ))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error creating promo: {e}")
+        if conn: conn.rollback()
+        return False
+
+def obtener_metricas():
+    conn = get_db_connection()
+    if not conn: return {"total_users": 0, "active_users": 0, "total_deposits": 0, "total_withdrawals": 0}
+    try:
+        cursor = conn.cursor()
+        
+        # Usuarios
         cursor.execute("SELECT COUNT(*) FROM Usuario")
-        total = cursor.fetchone()[0]
+        total_users = cursor.fetchone()[0]
         
         cursor.execute("SELECT COUNT(*) FROM Usuario WHERE activo = true")
-        active = cursor.fetchone()[0]
+        active_users = cursor.fetchone()[0]
+        
+        # Finanzas (Transaccion)
+        # Asumiendo tipos: 'Depósito', 'Retiro'
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM Transaccion WHERE tipo_transaccion = 'Depósito' AND estado = 'Completada'")
+        total_deposits = float(cursor.fetchone()[0])
+        
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM Transaccion WHERE tipo_transaccion = 'Retiro' AND estado = 'Completada'")
+        total_withdrawals = float(cursor.fetchone()[0])
         
         conn.close()
-        return {"total_users": total, "active_users": active}
-    except Exception:
-        return {"total_users": 0, "active_users": 0}
+        return {
+            "total_users": total_users, 
+            "active_users": active_users,
+            "total_deposits": total_deposits,
+            "total_withdrawals": total_withdrawals
+        }
+    except Exception as e:
+        print(f"Error metrics: {e}")
+        return {"total_users": 0, "active_users": 0, "total_deposits": 0, "total_withdrawals": 0}

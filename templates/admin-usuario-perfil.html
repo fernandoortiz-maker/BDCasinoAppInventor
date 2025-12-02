@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar perfil de Usuario — Royal Crumbs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        .account-config {
+            margin-top: 30px;
+            border-top: 1px solid #444;
+            padding-top: 20px;
+        }
+
+        .action-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .delete-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ===== ENCABEZADO ===== -->
+        <header class="rc-header">
+            <a href="/admin/usuarios" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Gestionar perfil</h1>
+            <div></div>
+        </header>
+
+        <div id="loading" style="text-align:center; margin-top:50px;">Cargando...</div>
+
+        <!-- ===== FORMULARIO ===== -->
+        <form class="user-form" id="userForm" style="display:none;">
+            <label>Email (ID)</label>
+            <input type="email" id="email" readonly style="background:#111; color:#888;">
+
+            <label>Rol</label>
+            <input type="text" id="rol" readonly style="background:#111; color:#888;">
+
+            <label>Nombre</label>
+            <input type="text" id="nombre" readonly>
+
+            <label>Apellido</label>
+            <input type="text" id="apellido" readonly>
+
+            <label>Saldo Actual</label>
+            <input type="text" id="saldo" readonly style="color:#ab925c; font-weight:bold;">
+
+            <!-- ===== CONFIGURACIÓN DE CUENTA ===== -->
+            <section class="account-config">
+                <h2 style="color:#fff; margin-bottom:15px;">Estado de Cuenta</h2>
+                <div class="status-buttons">
+                    <button type="button" class="status-btn" id="btn-activo">Activa</button>
+                    <button type="button" class="status-btn" id="btn-inactivo">Inactiva</button>
+                </div>
+            </section>
+
+            <!-- ===== BOTONES ===== -->
+            <div class="action-buttons">
+                <button type="button" class="btn-gold" onclick="alert('Funcionalidad de edición en desarrollo')">Guardar
+                    Cambios</button>
+                <button type="button" class="delete-btn"
+                    onclick="alert('Funcionalidad de eliminar en desarrollo')">Eliminar Cuenta</button>
+            </div>
+        </form>
+
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get('id');
+
+        async function cargarUsuario() {
+            if (!userId) {
+                alert("ID de usuario no proporcionado");
+                window.location.href = "/admin/usuarios";
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/usuarios/${userId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    const user = data.user;
+                    document.getElementById('email').value = user.email;
+                    document.getElementById('rol').value = user.rol;
+                    document.getElementById('nombre').value = user.nombre;
+                    document.getElementById('apellido').value = user.apellido;
+                    document.getElementById('saldo').value = `$${user.saldo_actual || 0.00}`;
+
+                    if (user.activo) {
+                        document.getElementById('btn-activo').classList.add('active');
+                    } else {
+                        document.getElementById('btn-inactivo').classList.add('blocked');
+                    }
+
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('userForm').style.display = 'block';
+                } else {
+                    alert("Usuario no encontrado");
+                    window.location.href = "/admin/usuarios";
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error cargando usuario");
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", cargarUsuario);
+    </script>
+</body>
+
+</html>

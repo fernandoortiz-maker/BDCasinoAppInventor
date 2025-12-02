@@ -441,6 +441,39 @@ def api_admin_metrics():
     metrics = obtener_metricas()
     return jsonify({"success": True, **metrics})
 
+@app.route("/api/admin/promos", methods=["GET", "POST"])
+@admin_required
+def api_admin_promos():
+    from db_config import obtener_promociones, crear_promocion
+    
+    if request.method == "GET":
+        promos = obtener_promociones()
+        return jsonify({"promos": promos})
+        
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        resultado = crear_promocion(data)
+        if resultado:
+            return jsonify({"success": True})
+        return jsonify({"error": "Error al crear promoción"}), 500
+
+@app.route("/admin/usuarios/perfil")
+@admin_required
+def admin_usuario_perfil_page():
+    return render_template("admin-usuario-perfil.html")
+
+@app.route("/api/admin/usuarios/<int:id_usuario>", methods=["GET"])
+@admin_required
+def api_admin_usuario_detail(id_usuario):
+    from db_config import obtener_usuario_por_id
+    user = obtener_usuario_por_id(id_usuario)
+    if user:
+        # Convertir decimales a float
+        if 'saldo_actual' in user and user['saldo_actual']:
+            user['saldo_actual'] = float(user['saldo_actual'])
+        return jsonify({"success": True, "user": user})
+    return jsonify({"success": False, "error": "Usuario no encontrado"}), 404
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
