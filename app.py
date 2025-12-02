@@ -232,21 +232,28 @@ def generar_pdf(id_auditoria):
     c = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
+    # --- CONFIGURACIÓN DE FUENTES ---
+    # Usaremos Helvetica como sustituto estándar de Arial
+    font_title = "Helvetica-Bold"
+    font_body = "Helvetica"
+    size_title = 14
+    size_body = 12
+    
     # --- ENCABEZADO ---
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont(font_title, size_title)
     c.drawString(50, height - 50, "REPORTE DE AUDITORÍA ISO 14001")
     
-    c.setFont("Helvetica", 10)
-    c.drawString(50, height - 75, f"Auditor: {datos['nombre']} {datos['apellido']}")
-    c.drawString(50, height - 90, f"Email: {datos['email']}")
-    c.drawString(400, height - 75, f"Fecha: {datos['fecha_auditoria']}")
-    c.drawString(400, height - 90, f"ID Reporte: #{id_auditoria}")
+    c.setFont(font_body, size_body)
+    c.drawString(50, height - 80, f"Auditor: {datos['nombre']} {datos['apellido']}")
+    c.drawString(50, height - 100, f"Email: {datos['email']}")
+    c.drawString(400, height - 80, f"Fecha: {datos['fecha_auditoria']}")
+    c.drawString(400, height - 100, f"ID Reporte: #{id_auditoria}")
     
-    c.line(50, height - 105, 550, height - 105)
+    c.setLineWidth(1)
+    c.line(50, height - 115, 562, height - 115)
     
-
     # --- CONTENIDO ---
-    y = height - 130
+    y = height - 150
     items = datos['datos_auditoria']
     
     # Asegurar que items es un diccionario
@@ -260,41 +267,92 @@ def generar_pdf(id_auditoria):
     if not isinstance(items, dict):
          items = {}
     
-    c.setFont("Helvetica", 9)
+    c.setFont(font_body, size_body)
+    
+    # Dimensiones de la tabla
+    # Col 1: Pregunta (Ancho variable)
+    # Col 2: CUMPLE (Ancho fijo)
+    # Col 3: X (Casilla)
+    # Col 4: NO CUMPLE (Ancho fijo)
+    # Col 5: X (Casilla)
+    # Col 6: PARCIAL (Ancho fijo)
+    # Col 7: X (Casilla)
+    
+    # Coordenadas X
+    x_start = 50
+    x_cumple_label = 280
+    x_cumple_box = 340
+    x_no_cumple_label = 365
+    x_no_cumple_box = 445
+    x_parcial_label = 470
+    x_parcial_box = 537
+    x_end = 562
+    
+    row_height = 30
     
     for pregunta, respuesta in items.items():
         # Control de salto de página
         if y < 50:
             c.showPage()
             y = height - 50
-            c.setFont("Helvetica", 9)
+            c.setFont(font_body, size_body)
         
-        # Color del estado
+        # Determinar marcas
         estado = str(respuesta)
-        if "No Cumple" in estado:
-            c.setFillColorRGB(0.8, 0, 0) # Rojo
-        elif "Parcialmente" in estado:
-            c.setFillColorRGB(1, 0.5, 0) # Naranja
-        else:
-            c.setFillColorRGB(0, 0.5, 0) # Verde oscuro
+        mark_cumple = "X" if "Cumple" in estado and "No" not in estado and "Parcialmente" not in estado else ""
+        mark_no_cumple = "X" if "No Cumple" in estado else ""
+        mark_parcial = "X" if "Parcialmente" in estado else ""
+        
+        # Dibujar líneas horizontales (Arriba y Abajo de la fila)
+        c.setLineWidth(0.5)
+        c.line(x_start, y + row_height, x_end, y + row_height) # Arriba
+        c.line(x_start, y, x_end, y) # Abajo
+        
+        # Dibujar líneas verticales
+        c.line(x_start, y, x_start, y + row_height) # Inicio
+        c.line(x_cumple_label, y, x_cumple_label, y + row_height) # Separa Pregunta de Cumple
+        c.line(x_cumple_box, y, x_cumple_box, y + row_height) # Separa Label Cumple de Box
+        c.line(x_no_cumple_label, y, x_no_cumple_label, y + row_height) # Separa Box Cumple de Label No Cumple
+        c.line(x_no_cumple_box, y, x_no_cumple_box, y + row_height) # Separa Label No Cumple de Box
+        c.line(x_parcial_label, y, x_parcial_label, y + row_height) # Separa Box No Cumple de Label Parcial
+        c.line(x_parcial_box, y, x_parcial_box, y + row_height) # Separa Label Parcial de Box
+        c.line(x_end, y, x_end, y + row_height) # Fin
+        
+        # Texto Centrado Verticalmente
+        text_y = y + 10
+        
+        # Pregunta (Recortar si es muy larga para que quepa en la celda)
+        c.setFont(font_body, 10) # Un poco más pequeño para que quepa mejor
+        pregunta_corta = (pregunta[:45] + '..') if len(pregunta) > 45 else pregunta
+        c.drawString(x_start + 5, text_y, pregunta_corta)
+        
+        # Labels
+        c.setFont("Helvetica-Bold", 8)
+        c.drawString(x_cumple_label + 5, text_y, "CUMPLE")
+        
+        c.drawString(x_no_cumple_label + 5, text_y + 5, "NO")
+        c.drawString(x_no_cumple_label + 5, text_y - 5, "CUMPLE")
+        
+        c.drawString(x_parcial_label + 5, text_y + 5, "CUMPLE")
+        c.drawString(x_parcial_label + 5, text_y - 5, "PARCIAL")
+        
+        # Marcas (X)
+        c.setFont("Helvetica-Bold", 12)
+        if mark_cumple:
+            c.drawCentredString(x_cumple_box + 12, text_y, "X")
+        if mark_no_cumple:
+            c.drawCentredString(x_no_cumple_box + 12, text_y, "X")
+        if mark_parcial:
+            c.drawCentredString(x_parcial_box + 12, text_y, "X")
             
-        # Imprimir Pregunta (recortada si es muy larga)
-        pregunta_corta = (pregunta[:90] + '..') if len(pregunta) > 90 else pregunta
-        c.drawString(50, y, f"• {pregunta_corta}")
-        
-        # Imprimir Respuesta (alineada a la derecha)
-        c.drawRightString(550, y, f"[{estado}]")
-        
-        # Restaurar color negro para la siguiente línea
-        c.setFillColorRGB(0, 0, 0)
-        y -= 15
+        y -= row_height
         
     c.save()
     buffer.seek(0)
     
     return send_file(
         buffer, 
-        as_attachment=False,  # Mostrar en navegador en lugar de descargar
+        as_attachment=False, 
         download_name=f"reporte_{id_auditoria}.pdf", 
         mimetype='application/pdf'
     )
