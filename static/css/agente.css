@@ -1,0 +1,77 @@
+/* ESTILOS PANEL AGENTE DE SOPORTE - Royal Crumbs */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #202020;
+    font-family: sans-serif;
+    color: #fff;
+}
+
+/* --- HEADER --- */
+.rc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #202020;
+    border-bottom: 1px solid #333;
+}
+
+.rc-back {
+    color: #fff;
+    text-decoration: none;
+    font-size: 24px;
+}
+
+.rc-screen-title {
+    font-size: 20px;
+    color: #ab925c;
+}
+
+.rc-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* --- LISTAS Y MENÚS --- */
+.rc-list-card {
+    background: #181818;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.rc-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #333;
+    color: #fff;
+    text-decoration: none;
+    font-size: 16px;
+    transition: background 0.2s;
+}
+
+.rc-list-item:hover {
+    background-color: #2a2a2a;
+    color: #ab925c;
+}
+
+.rc-list-item:last-child {
+    border-bottom: none;
+}
+
+.rc-chevron::after {
+    content: '›';
+    font-size: 20px;
+    color: #666;
+}
+
+.rc-list-item:hover .rc-chevron::after {
+    color: #ab925c;
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Agente Soporte</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-dashboard.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ENCABEZADO -->
+        <header class="rc-header">
+            <a href="/agente" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Dashboard</h1>
+            <div></div>
+        </header>
+
+        <!-- MÉTRICAS -->
+        <section class="metrics-section">
+            <div class="metrics-grid">
+
+                <div class="metric-card">
+                    <h3>Tickets Pendientes</h3>
+                    <div class="value" id="tickets-pendientes">-</div>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Mis Tickets</h3>
+                    <div class="value" id="mis-tickets">-</div>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Chats en Espera</h3>
+                    <div class="value" id="chats-esperando">-</div>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Mis Chats</h3>
+                    <div class="value" id="mis-chats">-</div>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Cerrados Hoy</h3>
+                    <div class="value" id="cerrados-hoy">-</div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ACCIONES RÁPIDAS -->
+        <section class="quick-actions">
+            <h2 class="section-title">Acciones Rápidas</h2>
+            <div class="actions-grid">
+
+                <a href="/agente/tickets" class="action-btn">
+                    <span class="icon">🎫</span>
+                    <span>Ver Todos los Tickets</span>
+                </a>
+
+                <a href="/agente/mis-tickets" class="action-btn">
+                    <span class="icon">📝</span>
+                    <span>Mis Tickets Asignados</span>
+                </a>
+
+                <a href="/agente/chats" class="action-btn">
+                    <span class="icon">💬</span>
+                    <span>Chats en Espera</span>
+                </a>
+
+                <a href="/agente/mis-chats" class="action-btn">
+                    <span class="icon">🗨️</span>
+                    <span>Mis Chats Activos</span>
+                </a>
+
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // Obtener ID del agente desde localStorage
+        const idAgente = parseInt(localStorage.getItem('userId'));
+
+        if (!idAgente) {
+            alert('Error: No se pudo identificar al agente. Por favor, inicie sesión nuevamente.');
+            window.location.href = '/login';
+        }
+
+        // Cargar estadísticas
+        async function cargarDashboard() {
+            try {
+                const response = await fetch(`/api/agente/dashboard/${idAgente}`);
+
+                if (!response.ok) {
+                    throw new Error('Error al cargar el dashboard');
+                }
+
+                const data = await response.json();
+
+                document.getElementById('tickets-pendientes').textContent = data.tickets_pendientes || 0;
+                document.getElementById('mis-tickets').textContent = data.mis_tickets || 0;
+                document.getElementById('chats-esperando').textContent = data.chats_esperando || 0;
+                document.getElementById('mis-chats').textContent = data.mis_chats || 0;
+                document.getElementById('cerrados-hoy').textContent = data.cerrados_hoy || 0;
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar las estadísticas');
+            }
+        }
+
+        // Cargar al inicio
+        cargarDashboard();
+
+        // Actualizar cada 30 segundos
+        setInterval(cargarDashboard, 30000);
+    </script>
+</body>
+
+</html>

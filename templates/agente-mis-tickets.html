@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Tickets — Agente Soporte</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-tickets.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ENCABEZADO -->
+        <header class="rc-header">
+            <a href="/agente" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Mis Tickets Asignados</h1>
+            <div></div>
+        </header>
+
+        <!-- LISTA DE TICKETS -->
+        <section class="tickets-list" id="tickets-container">
+            <div class="no-tickets">Cargando mis tickets...</div>
+        </section>
+
+    </div>
+
+    <script>
+        const idAgente = parseInt(localStorage.getItem('userId'));
+
+        async function cargarMisTickets() {
+            try {
+                const response = await fetch(`/api/agente/mis-tickets/${idAgente}`);
+
+                if (!response.ok) throw new Error('Error al cargar tickets');
+
+                const data = await response.json();
+                mostrarTickets(data.tickets);
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('tickets-container').innerHTML =
+                    '<div class="no-tickets">Error al cargar los tickets</div>';
+            }
+        }
+
+        function mostrarTickets(tickets) {
+            const container = document.getElementById('tickets-container');
+
+            if (!tickets || tickets.length === 0) {
+                container.innerHTML = '<div class="no-tickets">No tienes tickets asignados</div>';
+                return;
+            }
+
+            container.innerHTML = tickets.map(ticket => `
+        <div class="ticket-card" onclick="verTicket(${ticket.id_ticket})">
+          <div class="ticket-header">
+            <span class="ticket-id">Ticket #${ticket.id_ticket}</span>
+            <span class="ticket-estado estado-${ticket.estado.toLowerCase()}">${ticket.estado}</span>
+          </div>
+          <div class="ticket-info">
+            <h3>${ticket.asunto}</h3>
+            <div class="ticket-meta">
+              <span>👤 ${ticket.nombre_usuario}</span>
+              <span>📅 ${new Date(ticket.fecha_creacion).toLocaleDateString()}</span>
+              <span>✅ Asignado el ${new Date(ticket.fecha_asignacion).toLocaleDateString()}</span>
+            </div>
+            <p class="ticket-mensaje">${ticket.mensaje}</p>
+          </div>
+        </div>
+      `).join('');
+        }
+
+        function verTicket(idTicket) {
+            window.location.href = `/agente/ticket/${idTicket}`;
+        }
+
+        // Cargar al inicio
+        cargarMisTickets();
+
+        // Actualizar cada 15 segundos
+        setInterval(cargarMisTickets, 15000);
+    </script>
+</body>
+
+</html>

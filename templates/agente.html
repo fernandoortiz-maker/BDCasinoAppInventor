@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agente de Soporte — Royal Crumbs</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/agente.css') }}">
+</head>
+<body>
+  <div class="rc-container">
+    
+    <!-- ENCABEZADO -->
+    <header class="rc-header">
+      <a href="/home" class="rc-back">‹</a>
+      <h1 class="rc-screen-title">Agente de Soporte</h1>
+      <div></div> <!-- espacio vacío para centrar título -->
+    </header>
+
+    <!-- SECCIÓN PRINCIPAL -->
+    <section class="support-section">
+      <div class="rc-list-card">
+
+        <a href="/agente/dashboard" class="rc-list-item">
+          <span>📊 Dashboard</span>
+          <span class="rc-chevron"></span>
+        </a>
+
+        <a href="/agente/tickets" class="rc-list-item">
+          <span>🎫 Todos los Tickets</span>
+          <span class="rc-chevron"></span>
+        </a>
+
+        <a href="/agente/mis-tickets" class="rc-list-item">
+          <span>📝 Mis Tickets Asignados</span>
+          <span class="rc-chevron"></span>
+        </a>
+
+        <a href="/agente/chats" class="rc-list-item">
+          <span>💬 Chats en Vivo</span>
+          <span class="rc-chevron"></span>
+        </a>
+
+        <a href="/agente/mis-chats" class="rc-list-item">
+          <span>🗨️ Mis Chats Activos</span>
+          <span class="rc-chevron"></span>
+        </a>
+
+      </div>
+    </section>
+  </div>
+</body>
+</html>

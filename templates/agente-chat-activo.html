@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat — Agente Soporte</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-chat-activo.css') }}">
+</head>
+
+<body>
+    <div class="chat-container">
+
+        <!-- ENCABEZADO -->
+        <header class="chat-header">
+            <div class="chat-header-left">
+                <a href="/agente/mis-chats" class="rc-back">‹</a>
+                <div class="chat-user-info">
+                    <h2 id="chat-user-name">Cargando...</h2>
+                    <div class="status">● En línea</div>
+                </div>
+            </div>
+            <button class="btn-cerrar-chat" onclick="cerrarChat()">Cerrar Chat</button>
+        </header>
+
+        <!-- MENSAJES -->
+        <section class="chat-messages" id="messages-container">
+            <div class="no-messages">Cargando mensajes...</div>
+        </section>
+
+        <!-- INPUT -->
+        <section class="chat-input">
+            <form class="input-form" onsubmit="enviarMensaje(event)">
+                <textarea id="mensaje-input" placeholder="Escribe un mensaje..." rows="1" required></textarea>
+                <button type="submit" class="btn-send">➤</button>
+            </form>
+        </section>
+
+    </div>
+
+    <script>
+        const idAgente = parseInt(localStorage.getItem('userId'));
+        const idChat = parseInt(window.location.pathname.split('/').pop());
+        let chatData = null;
+
+        async function cargarChat() {
+            try {
+                const response = await fetch(`/api/agente/chat-mensajes/${idChat}`);
+
+                if (!response.ok) throw new Error('Error al cargar chat');
+
+                const data = await response.json();
+                chatData = data.chat;
+
+                document.getElementById('chat-user-name').textContent =
+                    `Chat con ${data.chat.nombre_usuario}`;
+
+                mostrarMensajes(data.mensajes);
+                scrollToBottom();
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('messages-container').innerHTML =
+                    '<div class="no-messages">Error al cargar los mensajes</div>';
+            }
+        }
+
+        function mostrarMensajes(mensajes) {
+            const container = document.getElementById('messages-container');
+
+            if (!mensajes || mensajes.length === 0) {
+                container.innerHTML = '<div class="no-messages">No hay mensajes todavía</div>';
+                return;
+            }
+
+            container.innerHTML = mensajes.map(msg => `
+        <div class="message ${msg.es_agente ? 'agente' : 'usuario'}">
+          <div class="message-header">
+            <span class="message-author">
+              ${msg.es_agente ? '👨‍💼' : '👤'} ${msg.nombre_usuario}
+            </span>
+            <span class="message-time">${new Date(msg.fecha_mensaje).toLocaleTimeString()}</span>
+          </div>
+          <div class="message-text">${msg.mensaje}</div>
+        </div>
+      `).join('');
+        }
+
+        async function enviarMensaje(event) {
+            event.preventDefault();
+
+            const mensaje = document.getElementById('mensaje-input').value.trim();
+            if (!mensaje) return;
+
+            const formData = new FormData();
+            formData.append('id_chat', idChat);
+            formData.append('id_agente', idAgente);
+            formData.append('mensaje', mensaje);
+
+            try {
+                const response = await fetch('/api/agente/enviar-mensaje-chat', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('mensaje-input').value = '';
+                    cargarChat(); // Recargar para ver el nuevo mensaje
+                } else {
+                    alert('Error al enviar mensaje');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al enviar mensaje');
+            }
+        }
+
+        async function cerrarChat() {
+            if (!confirm('¿Estás seguro de cerrar este chat?')) return;
+
+            const formData = new FormData();
+            formData.append('id_chat', idChat);
+
+            try {
+                const response = await fetch('/api/agente/cerrar-chat', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Chat cerrado correctamente');
+                    window.location.href = '/agente/mis-chats';
+                } else {
+                    alert('Error al cerrar chat');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cerrar chat');
+            }
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('messages-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Auto-ajustar altura del textarea
+        document.getElementById('mensaje-input').addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Cargar al inicio
+        cargarChat();
+
+        // Actualizar mensajes cada 3 segundos
+        setInterval(cargarChat, 3000);
+    </script>
+</body>
+
+</html>

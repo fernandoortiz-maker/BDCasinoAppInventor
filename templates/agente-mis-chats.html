@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Chats — Agente Soporte</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-chats.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ENCABEZADO -->
+        <header class="rc-header">
+            <a href="/agente" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Mis Chats Activos</h1>
+            <div></div>
+        </header>
+
+        <!-- LISTA DE CHATS -->
+        <section class="chats-list" id="chats-container">
+            <div class="no-chats">Cargando mis chats...</div>
+        </section>
+
+    </div>
+
+    <script>
+        const idAgente = parseInt(localStorage.getItem('userId'));
+
+        async function cargarMisChats() {
+            try {
+                const response = await fetch(`/api/agente/mis-chats/${idAgente}`);
+
+                if (!response.ok) throw new Error('Error al cargar chats');
+
+                const data = await response.json();
+                mostrarChats(data.chats);
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('chats-container').innerHTML =
+                    '<div class="no-chats">Error al cargar los chats</div>';
+            }
+        }
+
+        function mostrarChats(chats) {
+            const container = document.getElementById('chats-container');
+
+            if (!chats || chats.length === 0) {
+                container.innerHTML = '<div class="no-chats">No tienes chats activos</div>';
+                return;
+            }
+
+            container.innerHTML = chats.map(chat => `
+        <div class="chat-card" onclick="abrirChat(${chat.id_chat})">
+          <div class="chat-info">
+            <h3>💬 Chat #${chat.id_chat}</h3>
+            <div class="chat-meta">
+              <span>👤 ${chat.nombre_usuario}</span>
+              <span>📅 ${new Date(chat.fecha_inicio).toLocaleString()}</span>
+              <span class="chat-estado estado-en-curso">En curso</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+        }
+
+        function abrirChat(idChat) {
+            window.location.href = `/agente/chat/${idChat}`;
+        }
+
+        // Cargar al inicio
+        cargarMisChats();
+
+        // Actualizar cada 5 segundos
+        setInterval(cargarMisChats, 5000);
+    </script>
+</body>
+
+</html>

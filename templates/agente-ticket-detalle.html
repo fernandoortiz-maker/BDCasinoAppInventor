@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket — Agente Soporte</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-ticket-detalle.css') }}">
+</head>
+
+<body>
+    <div class="rc-container">
+
+        <!-- ENCABEZADO -->
+        <header class="rc-header">
+            <a href="/agente/tickets" class="rc-back">‹</a>
+            <h1 class="rc-screen-title" id="page-title">Ticket</h1>
+            <div></div>
+        </header>
+
+        <!-- INFO DEL TICKET -->
+        <section class="ticket-info-card" id="ticket-info">
+            <div>Cargando ticket...</div>
+        </section>
+
+        <!-- ACCIONES -->
+        <section class="actions-section" id="actions-section" style="display: none;">
+            <button class="btn btn-primary" id="btn-asignar" onclick="asignarTicket()">Asignarme este Ticket</button>
+            <button class="btn btn-danger" id="btn-cerrar" onclick="cerrarTicket()">Cerrar Ticket</button>
+        </section>
+
+        <!-- RESPUESTAS -->
+        <section class="responses-section">
+            <h2 class="section-title">Respuestas</h2>
+            <div id="responses-container">
+                <div class="no-responses">No hay respuestas todavía</div>
+            </div>
+        </section>
+
+        <!-- FORMULARIO DE RESPUESTA -->
+        <section class="response-form" id="response-form" style="display: none;">
+            <h2 class="section-title">Enviar Respuesta</h2>
+            <form onsubmit="enviarRespuesta(event)">
+                <div class="form-group">
+                    <label for="mensaje">Mensaje</label>
+                    <textarea id="mensaje" required placeholder="Escribe tu respuesta aquí..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Enviar Respuesta</button>
+            </form>
+        </section>
+
+    </div>
+
+    <script>
+        const idAgente = parseInt(localStorage.getItem('userId'));
+        const idTicket = parseInt(window.location.pathname.split('/').pop());
+        let ticketData = null;
+
+        async function cargarTicket() {
+            try {
+                const response = await fetch(`/api/agente/ticket/${idTicket}`);
+
+                if (!response.ok) throw new Error('Error al cargar ticket');
+
+                const data = await response.json();
+                ticketData = data.ticket;
+
+                mostrarTicket(data.ticket);
+                mostrarRespuestas(data.respuestas);
+
+                // Mostrar formulario de respuesta si el ticket no está cerrado
+                if (data.ticket.estado !== 'Cerrado') {
+                    document.getElementById('response-form').style.display = 'block';
+                    document.getElementById('actions-section').style.display = 'flex';
+
+                    // Si ya está asignado a este agente, ocultar botón de asignar
+                    if (data.ticket.id_agente === idAgente) {
+                        document.getElementById('btn-asignar').style.display = 'none';
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('ticket-info').innerHTML =
+                    '<div style="color: #e74c3c;">Error al cargar el ticket</div>';
+            }
+        }
+
+        function mostrarTicket(ticket) {
+            document.getElementById('page-title').textContent = `Ticket #${ticket.id_ticket}`;
+
+            document.getElementById('ticket-info').innerHTML = `
+        <div class="ticket-header">
+          <span class="ticket-id">Ticket #${ticket.id_ticket}</span>
+          <span class="ticket-estado estado-${ticket.estado.toLowerCase()}">${ticket.estado}</span>
+        </div>
+        <h2 class="ticket-subject">${ticket.asunto}</h2>
+        <div class="ticket-meta">
+          <span>👤 Usuario: ${ticket.nombre_usuario}</span>
+          <span>📧 ${ticket.email}</span>
+          <span>📅 ${new Date(ticket.fecha_creacion).toLocaleString()}</span>
+          ${ticket.nombre_agente ? `<span>👨‍💼 Asignado a: ${ticket.nombre_agente}</span>` : '<span>⚠️ Sin asignar</span>'}
+        </div>
+        <div class="ticket-mensaje-inicial">
+          <strong>Mensaje inicial:</strong><br>
+          ${ticket.mensaje}
+        </div>
+      `;
+        }
+
+        function mostrarRespuestas(respuestas) {
+            const container = document.getElementById('responses-container');
+
+            if (!respuestas || respuestas.length === 0) {
+                container.innerHTML = '<div class="no-responses">No hay respuestas todavía</div>';
+                return;
+            }
+
+            container.innerHTML = respuestas.map(resp => `
+        <div class="response-item ${resp.es_agente ? 'agente' : 'usuario'}">
+          <div class="response-header">
+            <span class="response-author">
+              ${resp.es_agente ? '👨‍💼 ' : '👤 '}${resp.nombre_usuario}
+              ${resp.es_agente ? '(Agente)' : '(Usuario)'}
+            </span>
+            <span class="response-date">${new Date(resp.fecha_respuesta).toLocaleString()}</span>
+          </div>
+          <div class="response-text">${resp.mensaje}</div>
+        </div>
+      `).join('');
+        }
+
+        async function asignarTicket() {
+            if (!confirm('¿Deseas asignarte este ticket?')) return;
+
+            const formData = new FormData();
+            formData.append('id_ticket', idTicket);
+            formData.append('id_agente', idAgente);
+
+            try {
+                const response = await fetch('/api/agente/asignar-ticket', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Ticket asignado correctamente');
+                    location.reload();
+                } else {
+                    alert('Error al asignar ticket');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al asignar ticket');
+            }
+        }
+
+        async function enviarRespuesta(event) {
+            event.preventDefault();
+
+            const mensaje = document.getElementById('mensaje').value;
+
+            const formData = new FormData();
+            formData.append('id_ticket', idTicket);
+            formData.append('id_agente', idAgente);
+            formData.append('mensaje', mensaje);
+
+            try {
+                const response = await fetch('/api/agente/responder-ticket', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('mensaje').value = '';
+                    cargarTicket(); // Recargar para ver la nueva respuesta
+                } else {
+                    alert('Error al enviar respuesta');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al enviar respuesta');
+            }
+        }
+
+        async function cerrarTicket() {
+            if (!confirm('¿Estás seguro de cerrar este ticket?')) return;
+
+            const formData = new FormData();
+            formData.append('id_ticket', idTicket);
+
+            try {
+                const response = await fetch('/api/agente/cerrar-ticket', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Ticket cerrado correctamente');
+                    window.location.href = '/agente/tickets';
+                } else {
+                    alert('Error al cerrar ticket');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cerrar ticket');
+            }
+        }
+
+        // Cargar al inicio
+        cargarTicket();
+
+        // Actualizar respuestas cada 10 segundos
+        setInterval(cargarTicket, 10000);
+    </script>
+</body>
+
+</html>
