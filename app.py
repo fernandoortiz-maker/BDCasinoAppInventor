@@ -474,7 +474,234 @@ def api_admin_usuario_detail(id_usuario):
         return jsonify({"success": True, "user": user})
     return jsonify({"success": False, "error": "Usuario no encontrado"}), 404
 
+# ==========================================
+# SECCIÓN 5: PANEL DE AGENTE DE SOPORTE
+# ==========================================
+
+# --- RUTAS HTML ---
+
+@app.route("/agente")
+def panel_agente():
+    """Menú principal del panel de agente"""
+    return render_template("agente.html")
+
+@app.route("/agente/dashboard")
+def agente_dashboard():
+    """Dashboard del agente con métricas"""
+    return render_template("agente-dashboard.html")
+
+@app.route("/agente/tickets")
+def agente_tickets():
+    """Lista de todos los tickets"""
+    return render_template("agente-tickets.html")
+
+@app.route("/agente/ticket/<int:id_ticket>")
+def agente_ticket_detalle(id_ticket):
+    """Detalle de un ticket específico"""
+    return render_template("agente-ticket-detalle.html")
+
+@app.route("/agente/mis-tickets")
+def agente_mis_tickets():
+    """Tickets asignados al agente"""
+    return render_template("agente-mis-tickets.html")
+
+@app.route("/agente/chats")
+def agente_chats():
+    """Chats en espera de ser asignados"""
+    return render_template("agente-chats.html")
+
+@app.route("/agente/chat/<int:id_chat>")
+def agente_chat_activo(id_chat):
+    """Vista de chat activo"""
+    return render_template("agente-chat-activo.html")
+
+@app.route("/agente/mis-chats")
+def agente_mis_chats():
+    """Chats asignados al agente"""
+    return render_template("agente-mis-chats.html")
+
+# --- API ENDPOINTS ---
+
+# Dashboard
+@app.route("/api/agente/dashboard/<int:id_agente>", methods=["GET"])
+def api_agente_dashboard(id_agente):
+    """Obtener métricas del dashboard para un agente"""
+    from db_config import obtener_dashboard_agente
+    try:
+        metricas = obtener_dashboard_agente(id_agente)
+        return jsonify(metricas)
+    except Exception as e:
+        print(f"Error dashboard agente: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Tickets
+@app.route("/api/agente/tickets", methods=["GET"])
+def api_agente_tickets():
+    """Obtener todos los tickets con filtros opcionales"""
+    from db_config import obtener_tickets
+    try:
+        estado = request.args.get('estado', None)
+        asignado = request.args.get('asignado', None)
+        tickets = obtener_tickets(estado, asignado)
+        return jsonify({"tickets": tickets})
+    except Exception as e:
+        print(f"Error obteniendo tickets: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/agente/ticket/<int:id_ticket>", methods=["GET"])
+def api_agente_ticket_detalle(id_ticket):
+    """Obtener detalles de un ticket y sus respuestas"""
+    from db_config import obtener_ticket_por_id, obtener_respuestas_ticket
+    try:
+        ticket = obtener_ticket_por_id(id_ticket)
+        if not ticket:
+            return jsonify({"error": "Ticket no encontrado"}), 404
+        
+        respuestas = obtener_respuestas_ticket(id_ticket)
+        return jsonify({"ticket": ticket, "respuestas": respuestas})
+    except Exception as e:
+        print(f"Error obteniendo ticket: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/agente/mis-tickets/<int:id_agente>", methods=["GET"])
+def api_agente_mis_tickets(id_agente):
+    """Obtener tickets asignados a un agente"""
+    from db_config import obtener_tickets_agente
+    try:
+        tickets = obtener_tickets_agente(id_agente)
+        return jsonify({"tickets": tickets})
+    except Exception as e:
+        print(f"Error obteniendo mis tickets: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/agente/asignar-ticket", methods=["POST"])
+def api_agente_asignar_ticket():
+    """Asignar un ticket a un agente"""
+    from db_config import asignar_ticket
+    try:
+        id_ticket = request.form.get('id_ticket')
+        id_agente = request.form.get('id_agente')
+        
+        if asignar_ticket(int(id_ticket), int(id_agente)):
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "No se pudo asignar"}), 500
+    except Exception as e:
+        print(f"Error asignando ticket: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/agente/responder-ticket", methods=["POST"])
+def api_agente_responder_ticket():
+    """Agregar una respuesta a un ticket"""
+    from db_config import responder_ticket
+    try:
+        id_ticket = request.form.get('id_ticket')
+        id_agente = request.form.get('id_agente')
+        mensaje = request.form.get('mensaje')
+        
+        if responder_ticket(int(id_ticket), int(id_agente), mensaje, es_agente=True):
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "No se pudo responder"}), 500
+    except Exception as e:
+        print(f"Error respondiendo ticket: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/agente/cerrar-ticket", methods=["POST"])
+def api_agente_cerrar_ticket():
+    """Cerrar un ticket"""
+    from db_config import cerrar_ticket
+    try:
+        id_ticket = request.form.get('id_ticket')
+        
+        if cerrar_ticket(int(id_ticket)):
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "No se pudo cerrar"}), 500
+    except Exception as e:
+        print(f"Error cerrando ticket: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# Chats
+@app.route("/api/agente/chats-esperando", methods=["GET"])
+def api_agente_chats_esperando():
+    """Obtener chats en espera"""
+    from db_config import obtener_chats_esperando
+    try:
+        chats = obtener_chats_esperando()
+        return jsonify({"chats": chats})
+    except Exception as e:
+        print(f"Error obteniendo chats en espera: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/agente/mis-chats/<int:id_agente>", methods=["GET"])
+def api_agente_mis_chats(id_agente):
+    """Obtener chats asignados a un agente"""
+    from db_config import obtener_chats_agente
+    try:
+        chats = obtener_chats_agente(id_agente)
+        return jsonify({"chats": chats})
+    except Exception as e:
+        print(f"Error obteniendo mis chats: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/agente/chat-mensajes/<int:id_chat>", methods=["GET"])
+def api_agente_chat_mensajes(id_chat):
+    """Obtener mensajes de un chat"""
+    from db_config import obtener_mensajes_chat
+    try:
+        data = obtener_mensajes_chat(id_chat)
+        if not data['chat']:
+            return jsonify({"error": "Chat no encontrado"}), 404
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error obteniendo mensajes: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/agente/tomar-chat", methods=["POST"])
+def api_agente_tomar_chat():
+    """Tomar un chat (asignar al agente)"""
+    from db_config import tomar_chat
+    try:
+        id_chat = request.form.get('id_chat')
+        id_agente = request.form.get('id_agente')
+        
+        if tomar_chat(int(id_chat), int(id_agente)):
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "No se pudo tomar el chat"}), 500
+    except Exception as e:
+        print(f"Error tomando chat: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/agente/enviar-mensaje-chat", methods=["POST"])
+def api_agente_enviar_mensaje_chat():
+    """Enviar un mensaje en el chat"""
+    from db_config import enviar_mensaje_chat
+    try:
+        id_chat = request.form.get('id_chat')
+        id_agente = request.form.get('id_agente')
+        mensaje = request.form.get('mensaje')
+        
+        if enviar_mensaje_chat(int(id_chat), int(id_agente), mensaje, es_agente=True):
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "No se pudo enviar el mensaje"}), 500
+    except Exception as e:
+        print(f"Error enviando mensaje: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/agente/cerrar-chat", methods=["POST"])
+def api_agente_cerrar_chat():
+    """Cerrar un chat"""
+    from db_config import cerrar_chat
+    try:
+        id_chat = request.form.get('id_chat')
+        
+        if cerrar_chat(int(id_chat)):
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "No se pudo cerrar"}), 500
+    except Exception as e:
+        print(f"Error cerrando chat: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
