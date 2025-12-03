@@ -364,7 +364,7 @@ def obtener_metricas():
 # SECCIÓN 5: FUNCIONES PANEL DE AGENTE DE SOPORTE
 # ==========================================
 
-# --- TICKETS ---
+# --- TICKETS (Tabla: Soporte) ---
 
 def obtener_tickets(estado=None, asignado=None):
     """Obtener todos los tickets con filtros opcionales"""
@@ -373,28 +373,30 @@ def obtener_tickets(estado=None, asignado=None):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Base query
+        # Base query usando la tabla Soporte
         sql = """
-            SELECT t.*, u.nombre || ' ' || u.apellido as nombre_usuario, u.email,
-                   a.nombre || ' ' || a.apellido as nombre_agente
-            FROM Ticket t
-            JOIN Usuario u ON t.id_usuario = u.id_usuario
-            LEFT JOIN Usuario a ON t.id_agente = a.id_usuario
+            SELECT s.id_ticket, s.asunto, s.mensaje, s.estado, s.fecha_creacion, s.fecha_cierre,
+                   u.nombre || ' ' || u.apellido as nombre_usuario, u.email,
+                   a.nombre || ' ' || a.apellido as nombre_agente,
+                   s.id_jugador, s.id_agente
+            FROM Soporte s
+            JOIN Usuario u ON s.id_jugador = u.id_usuario
+            LEFT JOIN Usuario a ON s.id_agente = a.id_usuario
             WHERE 1=1
         """
         params = []
         
         # Filtros
         if estado:
-            sql += " AND t.estado = %s"
+            sql += " AND s.estado = %s"
             params.append(estado)
         
         if asignado == 'si':
-            sql += " AND t.id_agente IS NOT NULL"
+            sql += " AND s.id_agente IS NOT NULL"
         elif asignado == 'no':
-            sql += " AND t.id_agente IS NULL"
+            sql += " AND s.id_agente IS NULL"
         
-        sql += " ORDER BY t.fecha_creacion DESC"
+        sql += " ORDER BY s.fecha_creacion DESC"
         
         cursor.execute(sql, params)
         tickets = cursor.fetchall()
@@ -411,12 +413,14 @@ def obtener_ticket_por_id(id_ticket):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         sql = """
-            SELECT t.*, u.nombre || ' ' || u.apellido as nombre_usuario, u.email,
-                   a.nombre || ' ' || a.apellido as nombre_agente
-            FROM Ticket t
-            JOIN Usuario u ON t.id_usuario = u.id_usuario
-            LEFT JOIN Usuario a ON t.id_agente = a.id_usuario
-            WHERE t.id_ticket = %s
+            SELECT s.id_ticket, s.asunto, s.mensaje, s.estado, s.fecha_creacion, s.fecha_cierre,
+                   u.nombre || ' ' || u.apellido as nombre_usuario, u.email,
+                   a.nombre || ' ' || a.apellido as nombre_agente,
+                   s.id_jugador, s.id_agente
+            FROM Soporte s
+            JOIN Usuario u ON s.id_jugador = u.id_usuario
+            LEFT JOIN Usuario a ON s.id_agente = a.id_usuario
+            WHERE s.id_ticket = %s
         """
         cursor.execute(sql, (id_ticket,))
         ticket = cursor.fetchone()
@@ -427,25 +431,9 @@ def obtener_ticket_por_id(id_ticket):
         return None
 
 def obtener_respuestas_ticket(id_ticket):
-    """Obtener todas las respuestas de un ticket"""
-    conn = get_db_connection()
-    if not conn: return []
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        sql = """
-            SELECT tr.*, u.nombre || ' ' || u.apellido as nombre_usuario
-            FROM Ticket_Respuesta tr
-            JOIN Usuario u ON tr.id_usuario = u.id_usuario
-            WHERE tr.id_ticket = %s
-            ORDER BY tr.fecha_respuesta ASC
-        """
-        cursor.execute(sql, (id_ticket,))
-        respuestas = cursor.fetchall()
-        conn.close()
-        return [dict(row) for row in respuestas]
-    except Exception as e:
-        print(f"Error obteniendo respuestas: {e}")
-        return []
+    """Obtener respuestas de un ticket - NO IMPLEMENTADO (no hay tabla de respuestas)"""
+    # La DB actual no tiene tabla de respuestas, retornar lista vacía
+    return []
 
 def asignar_ticket(id_ticket, id_agente):
     """Asignar un ticket a un agente"""
@@ -454,8 +442,8 @@ def asignar_ticket(id_ticket, id_agente):
     try:
         cursor = conn.cursor()
         sql = """
-            UPDATE Ticket 
-            SET id_agente = %s, estado = 'Asignado', fecha_asignacion = NOW()
+            UPDATE Soporte 
+            SET id_agente = %s, estado = 'En Proceso'
             WHERE id_ticket = %s
         """
         cursor.execute(sql, (id_agente, id_ticket))
@@ -468,23 +456,10 @@ def asignar_ticket(id_ticket, id_agente):
         return False
 
 def responder_ticket(id_ticket, id_usuario, mensaje, es_agente=True):
-    """Agregar una respuesta a un ticket"""
-    conn = get_db_connection()
-    if not conn: return False
-    try:
-        cursor = conn.cursor()
-        sql = """
-            INSERT INTO Ticket_Respuesta (id_ticket, id_usuario, mensaje, es_agente, fecha_respuesta)
-            VALUES (%s, %s, %s, %s, NOW())
-        """
-        cursor.execute(sql, (id_ticket, id_usuario, mensaje, es_agente))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"Error respondiendo ticket: {e}")
-        if conn: conn.rollback()
-        return False
+    """Agregar una respuesta a un ticket - NO IMPLEMENTADO (no hay tabla de respuestas)"""
+    # La DB actual no tiene tabla de respuestas
+    # Podrías actualizar el mensaje del ticket o simplemente retornar False
+    return False
 
 def cerrar_ticket(id_ticket):
     """Cerrar un ticket"""
@@ -492,7 +467,7 @@ def cerrar_ticket(id_ticket):
     if not conn: return False
     try:
         cursor = conn.cursor()
-        sql = "UPDATE Ticket SET estado = 'Cerrado', fecha_cierre = NOW() WHERE id_ticket = %s"
+        sql = "UPDATE Soporte SET estado = 'Cerrado', fecha_cierre = NOW() WHERE id_ticket = %s"
         cursor.execute(sql, (id_ticket,))
         conn.commit()
         conn.close()
@@ -509,184 +484,88 @@ def obtener_tickets_agente(id_agente):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         sql = """
-            SELECT t.*, u.nombre || ' ' || u.apellido as nombre_usuario, u.email
-            FROM Ticket t
-            JOIN Usuario u ON t.id_usuario = u.id_usuario
-            WHERE t.id_agente = %s AND t.estado != 'Cerrado'
-            ORDER BY t.fecha_creacion DESC
+            SELECT s.id_ticket, s.asunto, s.mensaje, s.estado, s.fecha_creacion, s.fecha_cierre,
+                   u.nombre || ' ' || u.apellido as nombre_usuario, u.email,
+                   s.id_jugador, s.id_agente
+            FROM Soporte s
+            JOIN Usuario u ON s.id_jugador = u.id_usuario
+            WHERE s.id_agente = %s AND s.estado != 'Cerrado'
+            ORDER BY s.fecha_creacion DESC
         """
         cursor.execute(sql, (id_agente,))
         tickets = cursor.fetchall()
         conn.close()
-        return [dict(row) for row in tickets]
+        
+        # Agregar fecha_asignacion ficticia para compatibilidad con frontend
+        result = []
+        for ticket in tickets:
+            t = dict(ticket)
+            t['fecha_asignacion'] = t['fecha_creacion']  # Usar fecha_creacion como aproximación
+            result.append(t)
+        return result
     except Exception as e:
         print(f"Error obteniendo tickets del agente: {e}")
         return []
 
-# --- CHATS ---
+# --- CHATS (NO IMPLEMENTADO - No hay tablas de chat) ---
 
 def obtener_chats_esperando():
-    """Obtener chats en espera de ser asignados"""
-    conn = get_db_connection()
-    if not conn: return []
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        sql = """
-            SELECT c.*, u.nombre || ' ' || u.apellido as nombre_usuario
-            FROM Chat_Soporte c
-            JOIN Usuario u ON c.id_usuario = u.id_usuario
-            WHERE c.estado = 'Esperando' AND c.id_agente IS NULL
-            ORDER BY c.fecha_inicio ASC
-        """
-        cursor.execute(sql)
-        chats = cursor.fetchall()
-        conn.close()
-        return [dict(row) for row in chats]
-    except Exception as e:
-        print(f"Error obteniendo chats en espera: {e}")
-        return []
+    """Obtener chats en espera - NO IMPLEMENTADO (no hay tabla de chats)"""
+    return []
 
 def obtener_chats_agente(id_agente):
-    """Obtener chats activos asignados a un agente"""
-    conn = get_db_connection()
-    if not conn: return []
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        sql = """
-            SELECT c.*, u.nombre || ' ' || u.apellido as nombre_usuario
-            FROM Chat_Soporte c
-            JOIN Usuario u ON c.id_usuario = u.id_usuario
-            WHERE c.id_agente = %s AND c.estado = 'En curso'
-            ORDER BY c.fecha_inicio DESC
-        """
-        cursor.execute(sql, (id_agente,))
-        chats = cursor.fetchall()
-        conn.close()
-        return [dict(row) for row in chats]
-    except Exception as e:
-        print(f"Error obteniendo chats del agente: {e}")
-        return []
+    """Obtener chats activos asignados a un agente - NO IMPLEMENTADO"""
+    return []
 
 def obtener_mensajes_chat(id_chat):
-    """Obtener mensajes de un chat y datos del usuario"""
-    conn = get_db_connection()
-    if not conn: return {'chat': None, 'mensajes': []}
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
-        # Datos del chat
-        sql_chat = """
-            SELECT c.*, u.nombre || ' ' || u.apellido as nombre_usuario
-            FROM Chat_Soporte c
-            JOIN Usuario u ON c.id_usuario = u.id_usuario
-            WHERE c.id_chat = %s
-        """
-        cursor.execute(sql_chat, (id_chat,))
-        chat = cursor.fetchone()
-        
-        # Mensajes
-        sql_mensajes = """
-            SELECT m.*, u.nombre || ' ' || u.apellido as nombre_usuario
-            FROM Mensaje_Chat m
-            JOIN Usuario u ON m.id_usuario = u.id_usuario
-            WHERE m.id_chat = %s
-            ORDER BY m.fecha_mensaje ASC
-        """
-        cursor.execute(sql_mensajes, (id_chat,))
-        mensajes = cursor.fetchall()
-        
-        conn.close()
-        return {
-            'chat': dict(chat) if chat else None,
-            'mensajes': [dict(row) for row in mensajes]
-        }
-    except Exception as e:
-        print(f"Error obteniendo mensajes del chat: {e}")
-        return {'chat': None, 'mensajes': []}
+    """Obtener mensajes de un chat - NO IMPLEMENTADO"""
+    return {'chat': None, 'mensajes': []}
 
 def tomar_chat(id_chat, id_agente):
-    """Asignar un chat a un agente"""
-    conn = get_db_connection()
-    if not conn: return False
-    try:
-        cursor = conn.cursor()
-        sql = """
-            UPDATE Chat_Soporte 
-            SET id_agente = %s, estado = 'En curso'
-            WHERE id_chat = %s
-        """
-        cursor.execute(sql, (id_agente, id_chat))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"Error tomando chat: {e}")
-        if conn: conn.rollback()
-        return False
+    """Asignar un chat a un agente - NO IMPLEMENTADO"""
+    return False
 
 def enviar_mensaje_chat(id_chat, id_usuario, mensaje, es_agente=True):
-    """Enviar un mensaje en un chat"""
-    conn = get_db_connection()
-    if not conn: return False
-    try:
-        cursor = conn.cursor()
-        sql = """
-            INSERT INTO Mensaje_Chat (id_chat, id_usuario, mensaje, es_agente, fecha_mensaje)
-            VALUES (%s, %s, %s, %s, NOW())
-        """
-        cursor.execute(sql, (id_chat, id_usuario, mensaje, es_agente))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"Error enviando mensaje: {e}")
-        if conn: conn.rollback()
-        return False
+    """Enviar un mensaje en un chat - NO IMPLEMENTADO"""
+    return False
 
 def cerrar_chat(id_chat):
-    """Cerrar un chat"""
-    conn = get_db_connection()
-    if not conn: return False
-    try:
-        cursor = conn.cursor()
-        sql = "UPDATE Chat_Soporte SET estado = 'Cerrado', fecha_cierre = NOW() WHERE id_chat = %s"
-        cursor.execute(sql, (id_chat,))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"Error cerrando chat: {e}")
-        if conn: conn.rollback()
-        return False
+    """Cerrar un chat - NO IMPLEMENTADO"""
+    return False
 
 # --- DASHBOARD ---
 
 def obtener_dashboard_agente(id_agente):
     """Obtener métricas para el dashboard del agente"""
     conn = get_db_connection()
-    if not conn: return {}
+    if not conn: 
+        return {
+            'tickets_pendientes': 0,
+            'mis_tickets': 0,
+            'chats_esperando': 0,
+            'mis_chats': 0,
+            'cerrados_hoy': 0
+        }
     try:
         cursor = conn.cursor()
         
         # Tickets pendientes (sin asignar)
-        cursor.execute("SELECT COUNT(*) FROM Ticket WHERE id_agente IS NULL AND estado = 'Abierto'")
+        cursor.execute("SELECT COUNT(*) FROM Soporte WHERE id_agente IS NULL AND estado = 'Abierto'")
         tickets_pendientes = cursor.fetchone()[0]
         
         # Mis tickets
-        cursor.execute("SELECT COUNT(*) FROM Ticket WHERE id_agente = %s AND estado != 'Cerrado'", (id_agente,))
+        cursor.execute("SELECT COUNT(*) FROM Soporte WHERE id_agente = %s AND estado != 'Cerrado'", (id_agente,))
         mis_tickets = cursor.fetchone()[0]
         
-        # Chats en espera
-        cursor.execute("SELECT COUNT(*) FROM Chat_Soporte WHERE id_agente IS NULL AND estado = 'Esperando'")
-        chats_esperando = cursor.fetchone()[0]
+        # Chats en espera (no hay tabla de chats)
+        chats_esperando = 0
         
-        # Mis chats
-        cursor.execute("SELECT COUNT(*) FROM Chat_Soporte WHERE id_agente = %s AND estado = 'En curso'", (id_agente,))
-        mis_chats = cursor.fetchone()[0]
+        # Mis chats (no hay tabla de chats)
+        mis_chats = 0
         
         # Cerrados hoy
         cursor.execute("""
-            SELECT COUNT(*) FROM Ticket 
+            SELECT COUNT(*) FROM Soporte 
             WHERE id_agente = %s AND estado = 'Cerrado' 
             AND DATE(fecha_cierre) = CURRENT_DATE
         """, (id_agente,))
