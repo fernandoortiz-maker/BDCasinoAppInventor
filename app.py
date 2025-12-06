@@ -368,7 +368,8 @@ def admin_required(f):
         # En producción, verificaríamos session.get("rol") == "Administrador"
         # Por ahora, permitimos acceso para desarrollo o si hay sesión
         if "user_id" not in session:
-             return render_template("index.html") # Redirigir a login si no hay sesión
+            # Retornar error JSON en lugar de template inexistente
+            return jsonify({"error": "No autorizado", "mensaje": "Debe iniciar sesión para acceder al panel de administración"}), 401
         return f(*args, **kwargs)
     return decorated_function
 
