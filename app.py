@@ -365,10 +365,14 @@ def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # En producción, verificaríamos session.get("rol") == "Administrador"
-        # Por ahora, permitimos acceso para desarrollo o si hay sesión
-        if "user_id" not in session:
-            # Retornar error JSON en lugar de template inexistente
+        # Detectar usuario desde App Inventor (parámetro URL)
+        user_id = request.args.get('user_id')
+        if user_id and user_id != "Invitado":
+            session["user_id"] = user_id
+            session.permanent = True
+        
+        # Verificar que hay sesión activa
+        if "user_id" not in session or session.get("user_id") == "Invitado":
             return jsonify({"error": "No autorizado", "mensaje": "Debe iniciar sesión para acceder al panel de administración"}), 401
         return f(*args, **kwargs)
     return decorated_function
