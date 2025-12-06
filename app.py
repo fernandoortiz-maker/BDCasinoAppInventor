@@ -365,15 +365,18 @@ def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Detectar usuario desde App Inventor (parámetro URL)
-        user_id = request.args.get('user_id')
-        if user_id and user_id != "Invitado":
-            session["user_id"] = user_id
-            session.permanent = True
+        # Detectar usuario desde App Inventor (parámetro URL) o sesión
+        # Acepta tanto user_id como user_email para compatibilidad
+        user_id = request.args.get('user_id') or request.args.get('user_email') or session.get("user_id")
         
-        # Verificar que hay sesión activa
-        if "user_id" not in session or session.get("user_id") == "Invitado":
+        # Verificar que hay usuario válido
+        if not user_id or user_id == "Invitado":
             return jsonify({"error": "No autorizado", "mensaje": "Debe iniciar sesión para acceder al panel de administración"}), 401
+        
+        # Guardar en sesión
+        session["user_id"] = user_id
+        session.permanent = True
+        
         return f(*args, **kwargs)
     return decorated_function
 
