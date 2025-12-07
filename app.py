@@ -259,7 +259,6 @@ def generar_pdf(id_auditoria):
     c.line(50, height - 115, 562, height - 115)
     
     # --- CONTENIDO ---
-    y = height - 150
     raw_data = datos['datos_auditoria']
     
     # Parsear JSON si es string
@@ -278,6 +277,78 @@ def generar_pdf(id_auditoria):
         items = raw_data if isinstance(raw_data, dict) else {}
         comentarios = {}
     
+    # --- ANÁLISIS DE RESPUESTAS PARA CLASIFICACIÓN ---
+    total_cumple = 0
+    total_no_cumple = 0
+    total_parcial = 0
+    total_no_aplica = 0
+    total_respuestas = len(items)
+    
+    for pregunta, respuesta in items.items():
+        estado = str(respuesta)
+        if "No Cumple" in estado:
+            total_no_cumple += 1
+        elif "Parcialmente" in estado:
+            total_parcial += 1
+        elif "No Aplica" in estado:
+            total_no_aplica += 1
+        elif "Cumple" in estado:
+            total_cumple += 1
+    
+    # Calcular clasificación
+    total_problemas = total_no_cumple + total_parcial
+    porcentaje_cumple = (total_cumple / total_respuestas * 100) if total_respuestas > 0 else 0
+    
+    # Determinar nivel de clasificación
+    if total_problemas == 0 and porcentaje_cumple >= 90:
+        clasificacion = "✅ BUENA PRÁCTICA"
+        clasificacion_color = (0.2, 0.7, 0.2)  # Verde
+        clasificacion_desc = "Excelente desempeño ambiental. Todas las áreas cumplen con los requisitos."
+    elif total_problemas <= 2:
+        clasificacion = "📋 CUMPLIMIENTO ACEPTABLE"
+        clasificacion_color = (0.4, 0.6, 0.2)  # Verde-amarillo
+        clasificacion_desc = f"Desempeño aceptable con {total_problemas} observaciones menores."
+    elif total_problemas <= 5:
+        clasificacion = "⚠️ NO CONFORMIDAD MENOR"
+        clasificacion_color = (0.9, 0.7, 0.1)  # Amarillo
+        clasificacion_desc = f"Se detectaron {total_problemas} incumplimientos que requieren atención."
+    elif total_problemas <= 10:
+        clasificacion = "🔶 NO CONFORMIDAD MAYOR"
+        clasificacion_color = (0.9, 0.5, 0.1)  # Naranja
+        clasificacion_desc = f"Múltiples incumplimientos ({total_problemas}) que requieren acción correctiva inmediata."
+    else:
+        clasificacion = "🚨 MULTA / SANCIÓN POTENCIAL"
+        clasificacion_color = (0.8, 0.2, 0.2)  # Rojo
+        clasificacion_desc = f"Incumplimiento grave con {total_problemas} no conformidades. Riesgo de sanción."
+    
+    # --- DIBUJAR RESUMEN DE CLASIFICACIÓN ---
+    # Fondo del cuadro de clasificación
+    c.setFillColorRGB(*clasificacion_color, alpha=0.1)
+    c.rect(50, height - 200, 512, 70, fill=True, stroke=False)
+    
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont(font_title, 14)
+    c.drawString(55, height - 145, "RESULTADO DE LA AUDITORÍA:")
+    
+    c.setFillColorRGB(*clasificacion_color)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(260, height - 145, clasificacion)
+    
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont(font_body, 10)
+    c.drawString(55, height - 165, clasificacion_desc)
+    
+    # Estadísticas rápidas
+    c.setFont(font_body, 9)
+    stats_y = height - 185
+    c.drawString(55, stats_y, f"📊 Total: {total_respuestas} items  |  ✅ Cumple: {total_cumple}  |  ❌ No Cumple: {total_no_cumple}  |  ⚠️ Parcial: {total_parcial}  |  ➖ N/A: {total_no_aplica}")
+    
+    c.setLineWidth(1)
+    c.line(50, height - 205, 562, height - 205)
+    
+    y = height - 230
+    
+    c.setFillColorRGB(0, 0, 0)
     c.setFont(font_body, size_body)
     
     # Coordenadas X
