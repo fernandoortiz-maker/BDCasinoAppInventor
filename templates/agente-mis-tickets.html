@@ -32,12 +32,24 @@
             const container = document.getElementById('tickets-container');
             container.innerHTML = '<div class="no-tickets">⏳ Cargando mis tickets...</div>';
 
+            // Validar que hay un ID de agente
+            if (!idAgente || isNaN(idAgente)) {
+                container.innerHTML = '<div class="no-tickets" style="color:#ab925c;">⚠️ Sesión no iniciada. Vuelve a entrar desde la app.</div>';
+                return;
+            }
+
             try {
                 const response = await fetch(`/api/agente/mis-tickets/${idAgente}`);
 
                 if (!response.ok) throw new Error('Error al cargar tickets');
 
                 const data = await response.json();
+
+                if (data.error) {
+                    container.innerHTML = `<div class="no-tickets" style="color:#f44336;">❌ ${data.error}</div>`;
+                    return;
+                }
+
                 mostrarTickets(data.tickets);
 
             } catch (error) {

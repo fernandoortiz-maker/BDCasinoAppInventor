@@ -32,17 +32,29 @@
             const container = document.getElementById('chats-container');
             container.innerHTML = '<div class="no-chats">⏳ Cargando mis chats...</div>';
 
+            // Validar que hay un ID de agente
+            if (!idAgente || isNaN(idAgente)) {
+                container.innerHTML = '<div class="no-chats" style="color:#ab925c;">⚠️ Sesión no iniciada. Vuelve a entrar desde la app.</div>';
+                return;
+            }
+
             try {
                 const response = await fetch(`/api/agente/mis-chats/${idAgente}`);
 
                 if (!response.ok) throw new Error('Error al cargar chats');
 
                 const data = await response.json();
+
+                if (data.error) {
+                    container.innerHTML = `<div class="no-chats" style="color:#888;">💭 ${data.error}</div>`;
+                    return;
+                }
+
                 mostrarChats(data.chats);
 
             } catch (error) {
                 console.error('Error:', error);
-                container.innerHTML = '<div class="no-chats" style="color:#888;">💭 No hay chats activos disponibles</div>';
+                container.innerHTML = '<div class="no-chats" style="color:#888;">💭 No hay sistema de chats activo</div>';
             }
         }
 
