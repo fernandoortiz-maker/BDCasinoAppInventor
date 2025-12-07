@@ -1,19 +1,21 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Agente de Soporte — Royal Crumbs</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/agente.css') }}">
 </head>
-<body>
+
+<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
   <div class="rc-container">
-    
+
     <!-- ENCABEZADO -->
     <header class="rc-header">
-      <a href="/home" class="rc-back">‹</a>
+      <div></div> <!-- Sin botón de regreso en pantalla principal -->
       <h1 class="rc-screen-title">Agente de Soporte</h1>
-      <div></div> <!-- espacio vacío para centrar título -->
+      <div></div>
     </header>
 
     <!-- SECCIÓN PRINCIPAL -->
@@ -48,5 +50,7 @@
       </div>
     </section>
   </div>
+  <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
+
 </html>

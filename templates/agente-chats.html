@@ -3,12 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chats en Vivo — Agente Soporte</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-chats.css') }}">
 </head>
 
-<body>
+<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
     <div class="rc-container">
 
         <!-- ENCABEZADO -->
@@ -20,7 +20,7 @@
 
         <!-- LISTA DE CHATS -->
         <section class="chats-list" id="chats-container">
-            <div class="no-chats">Cargando chats...</div>
+            <div class="no-chats">⏳ Cargando chats en vivo...</div>
         </section>
 
     </div>
@@ -29,6 +29,9 @@
         const idAgente = parseInt(localStorage.getItem('userId'));
 
         async function cargarChats() {
+            const container = document.getElementById('chats-container');
+            container.innerHTML = '<div class="no-chats">⏳ Cargando chats en vivo...</div>';
+
             try {
                 const response = await fetch('/api/agente/chats-esperando');
 
@@ -39,8 +42,7 @@
 
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('chats-container').innerHTML =
-                    '<div class="no-chats">Error al cargar los chats</div>';
+                container.innerHTML = '<div class="no-chats" style="color:#888;">💭 No hay sistema de chats en vivo configurado</div>';
             }
         }
 
@@ -48,7 +50,7 @@
             const container = document.getElementById('chats-container');
 
             if (!chats || chats.length === 0) {
-                container.innerHTML = '<div class="no-chats">No hay chats en espera</div>';
+                container.innerHTML = '<div class="no-chats">💭 No hay chats en espera</div>';
                 return;
             }
 
@@ -97,9 +99,10 @@
         // Cargar al inicio
         cargarChats();
 
-        // Actualizar cada 5 segundos
-        setInterval(cargarChats, 5000);
+        // Actualizar cada 10 segundos
+        setInterval(cargarChats, 10000);
     </script>
+    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>

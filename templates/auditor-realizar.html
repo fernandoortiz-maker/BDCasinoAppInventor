@@ -261,19 +261,31 @@
             }
         ];
 
-        // Generar el cuestionario dinámicamente
+        // Generar el cuestionario dinámicamente con campos de comentarios
         var cuestionario = document.getElementById('cuestionario');
         var contador = 0;
+        var seccionActual = 0;
 
         datosAuditoria.forEach(function (item) {
             if (item.type === "titulo") {
                 cuestionario.innerHTML += `<div class="section-title">${item.texto}</div>`;
             } else if (item.type === "grid") {
+                seccionActual++;
                 cuestionario.innerHTML += `<div style="margin-top:15px; font-weight:bold; color:#ab925c;">${item.titulo}</div>`;
                 item.filas.forEach(function (pregunta) {
                     contador++;
                     cuestionario.innerHTML += crearPregunta('q' + contador, pregunta);
                 });
+                // Agregar campo de comentarios después de cada sección
+                cuestionario.innerHTML += `
+                    <div class="comment-block" style="margin-top:10px; margin-bottom:20px;">
+                        <label style="color:#888; font-size:0.9em;">💬 Comentarios para "${item.titulo}" (opcional):</label>
+                        <textarea name="comentario_seccion_${seccionActual}" 
+                                  data-seccion="${item.titulo}"
+                                  placeholder="Escriba observaciones, hallazgos o recomendaciones..."
+                                  style="width:100%; min-height:60px; padding:10px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:5px; resize:vertical; margin-top:5px;"></textarea>
+                    </div>
+                `;
             }
         });
 
@@ -283,20 +295,36 @@
 
             const formData = new FormData(this);
             const respuestas = {};
+            const comentarios = {};
 
-            // Recopilar todas las respuestas
+            // Recopilar todas las respuestas y comentarios
             for (let [key, value] of formData.entries()) {
-                if (key !== 'fecha') {
-                    const pregunta = document.querySelector(`input[name="${key}"]`)
-                        .closest('.question-block')
-                        .querySelector('.question-text').textContent;
-                    respuestas[pregunta] = value;
+                if (key === 'fecha') continue;
+
+                // Si es un comentario de sección
+                if (key.startsWith('comentario_seccion_')) {
+                    const textarea = document.querySelector(`textarea[name="${key}"]`);
+                    const seccionNombre = textarea.getAttribute('data-seccion');
+                    if (value.trim()) { // Solo incluir si hay texto
+                        comentarios[seccionNombre] = value.trim();
+                    }
+                } else {
+                    // Es una pregunta con radio buttons
+                    const inputElement = document.querySelector(`input[name="${key}"]`);
+                    if (inputElement) {
+                        const questionBlock = inputElement.closest('.question-block');
+                        if (questionBlock) {
+                            const pregunta = questionBlock.querySelector('.question-text').textContent;
+                            respuestas[pregunta] = value;
+                        }
+                    }
                 }
             }
 
             const datos = {
                 fecha: formData.get('fecha'),
-                respuestas: respuestas
+                respuestas: respuestas,
+                comentarios: comentarios
             };
 
             try {

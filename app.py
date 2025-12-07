@@ -200,14 +200,20 @@ def api_guardar_checklist():
         if not email:
             return jsonify({"exito": False, "mensaje": "No logueado"}), 401
 
-        checklist = data.get("respuestas")
-        # Convertimos el diccionario a texto para guardar en BD
-        checklist_json = json.dumps(checklist)
+        respuestas = data.get("respuestas", {})
+        comentarios = data.get("comentarios", {})
+        
+        # Combinar respuestas y comentarios en un solo objeto
+        datos_auditoria = {
+            "respuestas": respuestas,
+            "comentarios": comentarios
+        }
+        
+        checklist_json = json.dumps(datos_auditoria)
         
         id_audit = guardar_auditoria(email, f"Auditoría {data.get('fecha')}", checklist_json)
         
         if id_audit:
-            # URL para descargar el PDF
             pdf_url = f"/api/pdf_auditoria/{id_audit}"
             return jsonify({"exito": True, "mensaje": "Guardado", "pdf_url": pdf_url})
         else:
@@ -254,29 +260,25 @@ def generar_pdf(id_auditoria):
     
     # --- CONTENIDO ---
     y = height - 150
-    items = datos['datos_auditoria']
+    raw_data = datos['datos_auditoria']
     
-    # Asegurar que items es un diccionario
-    if isinstance(items, str):
+    # Parsear JSON si es string
+    if isinstance(raw_data, str):
         try:
-            items = json.loads(items)
+            raw_data = json.loads(raw_data)
         except Exception as e:
             print(f"Error parseando JSON: {e}")
-            items = {}
-            
-    if not isinstance(items, dict):
-         items = {}
+            raw_data = {}
+    
+    # Determinar estructura: nueva (con respuestas/comentarios) o antigua (solo respuestas)
+    if isinstance(raw_data, dict) and 'respuestas' in raw_data:
+        items = raw_data.get('respuestas', {})
+        comentarios = raw_data.get('comentarios', {})
+    else:
+        items = raw_data if isinstance(raw_data, dict) else {}
+        comentarios = {}
     
     c.setFont(font_body, size_body)
-    
-    # Dimensiones de la tabla
-    # Col 1: Pregunta (Ancho variable)
-    # Col 2: CUMPLE (Ancho fijo)
-    # Col 3: X (Casilla)
-    # Col 4: NO CUMPLE (Ancho fijo)
-    # Col 5: X (Casilla)
-    # Col 6: PARCIAL (Ancho fijo)
-    # Col 7: X (Casilla)
     
     # Coordenadas X
     x_start = 50
@@ -290,9 +292,14 @@ def generar_pdf(id_auditoria):
     
     row_height = 30
     
+    # Agrupar preguntas por sección (basado en nombres de sección en comentarios)
+    secciones_con_comentarios = set(comentarios.keys())
+    seccion_actual = None
+    preguntas_seccion_count = 0
+    
     for pregunta, respuesta in items.items():
         # Control de salto de página
-        if y < 50:
+        if y < 80:
             c.showPage()
             y = height - 50
             c.setFont(font_body, size_body)
@@ -303,40 +310,37 @@ def generar_pdf(id_auditoria):
         mark_no_cumple = "X" if "No Cumple" in estado else ""
         mark_parcial = "X" if "Parcialmente" in estado else ""
         
-        # Dibujar líneas horizontales (Arriba y Abajo de la fila)
+        # Dibujar líneas horizontales
         c.setLineWidth(0.5)
-        c.line(x_start, y + row_height, x_end, y + row_height) # Arriba
-        c.line(x_start, y, x_end, y) # Abajo
+        c.line(x_start, y + row_height, x_end, y + row_height)
+        c.line(x_start, y, x_end, y)
         
         # Dibujar líneas verticales
-        c.line(x_start, y, x_start, y + row_height) # Inicio
-        c.line(x_cumple_label, y, x_cumple_label, y + row_height) # Separa Pregunta de Cumple
-        c.line(x_cumple_box, y, x_cumple_box, y + row_height) # Separa Label Cumple de Box
-        c.line(x_no_cumple_label, y, x_no_cumple_label, y + row_height) # Separa Box Cumple de Label No Cumple
-        c.line(x_no_cumple_box, y, x_no_cumple_box, y + row_height) # Separa Label No Cumple de Box
-        c.line(x_parcial_label, y, x_parcial_label, y + row_height) # Separa Box No Cumple de Label Parcial
-        c.line(x_parcial_box, y, x_parcial_box, y + row_height) # Separa Label Parcial de Box
-        c.line(x_end, y, x_end, y + row_height) # Fin
+        c.line(x_start, y, x_start, y + row_height)
+        c.line(x_cumple_label, y, x_cumple_label, y + row_height)
+        c.line(x_cumple_box, y, x_cumple_box, y + row_height)
+        c.line(x_no_cumple_label, y, x_no_cumple_label, y + row_height)
+        c.line(x_no_cumple_box, y, x_no_cumple_box, y + row_height)
+        c.line(x_parcial_label, y, x_parcial_label, y + row_height)
+        c.line(x_parcial_box, y, x_parcial_box, y + row_height)
+        c.line(x_end, y, x_end, y + row_height)
         
-        # Texto Centrado Verticalmente
         text_y = y + 10
         
-        # Pregunta (Recortar si es muy larga para que quepa en la celda)
-        c.setFont(font_body, 10) # Un poco más pequeño para que quepa mejor
+        # Pregunta
+        c.setFont(font_body, 10)
         pregunta_corta = (pregunta[:45] + '..') if len(pregunta) > 45 else pregunta
         c.drawString(x_start + 5, text_y, pregunta_corta)
         
         # Labels
         c.setFont("Helvetica-Bold", 8)
         c.drawString(x_cumple_label + 5, text_y, "CUMPLE")
-        
         c.drawString(x_no_cumple_label + 5, text_y + 5, "NO")
         c.drawString(x_no_cumple_label + 5, text_y - 5, "CUMPLE")
-        
         c.drawString(x_parcial_label + 5, text_y + 5, "CUMPLE")
         c.drawString(x_parcial_label + 5, text_y - 5, "PARCIAL")
         
-        # Marcas (X)
+        # Marcas
         c.setFont("Helvetica-Bold", 12)
         if mark_cumple:
             c.drawCentredString(x_cumple_box + 12, text_y, "X")
@@ -346,6 +350,49 @@ def generar_pdf(id_auditoria):
             c.drawCentredString(x_parcial_box + 12, text_y, "X")
             
         y -= row_height
+    
+    # Agregar sección de comentarios al final si hay comentarios
+    if comentarios:
+        y -= 20
+        if y < 150:
+            c.showPage()
+            y = height - 50
+            
+        c.setFont(font_title, size_title)
+        c.drawString(50, y, "OBSERVACIONES Y COMENTARIOS")
+        c.line(50, y - 5, 300, y - 5)
+        y -= 30
+        
+        c.setFont(font_body, 10)
+        for seccion, comentario in comentarios.items():
+            if y < 80:
+                c.showPage()
+                y = height - 50
+                c.setFont(font_body, 10)
+            
+            # Título de la sección
+            c.setFont("Helvetica-Bold", 10)
+            seccion_corta = (seccion[:60] + '..') if len(seccion) > 60 else seccion
+            c.drawString(50, y, f"• {seccion_corta}")
+            y -= 15
+            
+            # Comentario (dividir en líneas si es largo)
+            c.setFont(font_body, 9)
+            palabras = comentario.split()
+            linea = ""
+            for palabra in palabras:
+                if len(linea + " " + palabra) < 90:
+                    linea = linea + " " + palabra if linea else palabra
+                else:
+                    c.drawString(60, y, linea)
+                    y -= 12
+                    linea = palabra
+                    if y < 50:
+                        c.showPage()
+                        y = height - 50
+            if linea:
+                c.drawString(60, y, linea)
+                y -= 20
         
     c.save()
     buffer.seek(0)
