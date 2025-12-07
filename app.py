@@ -397,6 +397,19 @@ def admin_gestion_usuarios():
     # pero podría tener el menú intermedio si se crean más roles
     return render_template("admin-gestion-usuarios.html")
 
+@app.route("/admin/administradores")
+@admin_required
+def admin_administradores():
+    return render_template("admin-administradores.html")
+
+@app.route("/api/admin/administradores", methods=["GET"])
+@admin_required
+def api_admin_administradores():
+    """Obtener lista de usuarios con rol Administrador"""
+    from db_config import obtener_administradores
+    admins = obtener_administradores()
+    return jsonify({"admins": admins})
+
 @app.route("/admin/juegos")
 @admin_required
 def admin_juegos():
@@ -415,7 +428,47 @@ def admin_promociones():
 @app.route("/admin/configuracion")
 @admin_required
 def admin_configuracion():
-    return render_template("admin-configuracion.html") # Necesita ser creado
+    return render_template("admin-configuracion.html")
+
+# --- API ENDPOINTS PARA GESTIÓN DE IPs ---
+
+@app.route("/api/admin/ips-bloqueadas", methods=["GET"])
+@admin_required
+def api_admin_ips_bloqueadas():
+    """Obtener lista de IPs bloqueadas"""
+    from db_config import obtener_ips_bloqueadas
+    ips = obtener_ips_bloqueadas()
+    return jsonify({"ips": ips})
+
+@app.route("/api/admin/ips-bloqueadas", methods=["POST"])
+@admin_required
+def api_admin_bloquear_ip():
+    """Agregar una IP a la lista de bloqueadas"""
+    from db_config import agregar_ip_bloqueada
+    try:
+        data = request.get_json(force=True)
+        direccion_ip = data.get("direccion_ip", "").strip()
+        motivo = data.get("motivo", "")
+        
+        if not direccion_ip:
+            return jsonify({"exito": False, "mensaje": "La dirección IP es requerida"}), 400
+        
+        # Obtener email del admin que bloquea
+        bloqueado_por = session.get("user_id", "Admin")
+        
+        resultado = agregar_ip_bloqueada(direccion_ip, motivo, bloqueado_por)
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({"exito": False, "mensaje": str(e)}), 500
+
+@app.route("/api/admin/ips-bloqueadas/<int:id_ip>", methods=["DELETE"])
+@admin_required
+def api_admin_desbloquear_ip(id_ip):
+    """Eliminar una IP de la lista de bloqueadas"""
+    from db_config import eliminar_ip_bloqueada
+    if eliminar_ip_bloqueada(id_ip):
+        return jsonify({"exito": True, "mensaje": "IP desbloqueada correctamente"})
+    return jsonify({"exito": False, "mensaje": "No se pudo desbloquear la IP"}), 500
 
 # --- API ENDPOINTS PARA ADMIN ---
 
@@ -481,6 +534,23 @@ def api_admin_usuario_detail(id_usuario):
             user['saldo_actual'] = float(user['saldo_actual'])
         return jsonify({"success": True, "user": user})
     return jsonify({"success": False, "error": "Usuario no encontrado"}), 404
+
+@app.route("/api/admin/usuarios/<int:id_usuario>/estado", methods=["POST"])
+@admin_required
+def api_admin_usuario_cambiar_estado(id_usuario):
+    """Cambiar el estado activo/inactivo de un usuario"""
+    from db_config import cambiar_estado_usuario
+    try:
+        data = request.get_json(force=True)
+        nuevo_estado = data.get("activo", True)
+        
+        resultado = cambiar_estado_usuario(id_usuario, nuevo_estado)
+        if resultado:
+            return jsonify({"success": True, "mensaje": f"Usuario {'activado' if nuevo_estado else 'desactivado'} correctamente"})
+        return jsonify({"success": False, "error": "No se pudo actualizar el estado"}), 500
+    except Exception as e:
+        print(f"Error cambiando estado: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ==========================================
 # SECCIÓN 5: PANEL DE AGENTE DE SOPORTE

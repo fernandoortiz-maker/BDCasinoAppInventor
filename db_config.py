@@ -226,6 +226,27 @@ def obtener_todos_usuarios():
         print(f"Error fetching users: {e}")
         return []
 
+def obtener_administradores():
+    """Obtener usuarios con rol de Administrador"""
+    conn = get_db_connection()
+    if not conn: return []
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        sql = """
+            SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.activo, r.nombre as rol
+            FROM Usuario u
+            JOIN Rol r ON u.id_rol = r.id_rol
+            WHERE r.nombre = 'Administrador'
+            ORDER BY u.id_usuario DESC
+        """
+        cursor.execute(sql)
+        admins = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in admins]
+    except Exception as e:
+        print(f"Error fetching admins: {e}")
+        return []
+
 def obtener_usuario_por_id(id_usuario):
     conn = get_db_connection()
     if not conn: return None
@@ -245,6 +266,23 @@ def obtener_usuario_por_id(id_usuario):
     except Exception as e:
         print(f"Error fetching user detail: {e}")
         return None
+
+def cambiar_estado_usuario(id_usuario, activo):
+    """Cambiar el estado activo/inactivo de un usuario"""
+    conn = get_db_connection()
+    if not conn: return False
+    try:
+        cursor = conn.cursor()
+        sql = "UPDATE Usuario SET activo = %s WHERE id_usuario = %s"
+        cursor.execute(sql, (activo, id_usuario))
+        conn.commit()
+        rows_affected = cursor.rowcount
+        conn.close()
+        return rows_affected > 0
+    except Exception as e:
+        print(f"Error cambiando estado de usuario: {e}")
+        if conn: conn.rollback()
+        return False
 
 def obtener_juegos():
     conn = get_db_connection()
@@ -359,6 +397,103 @@ def obtener_metricas():
     except Exception as e:
         print(f"Error metrics: {e}")
         return {"total_users": 0, "active_users": 0, "total_deposits": 0, "total_withdrawals": 0}
+
+# --- GESTIÓN DE IPs BLOQUEADAS ---
+
+def inicializar_tabla_ips():
+    """Crear tabla de IPs bloqueadas si no existe"""
+    conn = get_db_connection()
+    if not conn: return False
+    try:
+        cursor = conn.cursor()
+        sql = """
+            CREATE TABLE IF NOT EXISTS IP_Bloqueada (
+                id_ip SERIAL PRIMARY KEY,
+                direccion_ip VARCHAR(45) UNIQUE NOT NULL,
+                motivo TEXT,
+                fecha_bloqueo TIMESTAMP DEFAULT NOW(),
+                bloqueado_por VARCHAR(100)
+            )
+        """
+        cursor.execute(sql)
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error creando tabla IP_Bloqueada: {e}")
+        return False
+
+def obtener_ips_bloqueadas():
+    """Obtener lista de IPs bloqueadas"""
+    # Asegurar que la tabla existe
+    inicializar_tabla_ips()
+    
+    conn = get_db_connection()
+    if not conn: return []
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        sql = "SELECT * FROM IP_Bloqueada ORDER BY fecha_bloqueo DESC"
+        cursor.execute(sql)
+        ips = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in ips]
+    except Exception as e:
+        print(f"Error obteniendo IPs bloqueadas: {e}")
+        return []
+
+def agregar_ip_bloqueada(direccion_ip, motivo="", bloqueado_por="Admin"):
+    """Agregar una IP a la lista de bloqueadas"""
+    # Asegurar que la tabla existe
+    inicializar_tabla_ips()
+    
+    conn = get_db_connection()
+    if not conn: return {"exito": False, "mensaje": "Error de conexión"}
+    try:
+        cursor = conn.cursor()
+        sql = """
+            INSERT INTO IP_Bloqueada (direccion_ip, motivo, bloqueado_por)
+            VALUES (%s, %s, %s)
+        """
+        cursor.execute(sql, (direccion_ip, motivo, bloqueado_por))
+        conn.commit()
+        conn.close()
+        return {"exito": True, "mensaje": f"IP {direccion_ip} bloqueada correctamente"}
+    except Exception as e:
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            return {"exito": False, "mensaje": "Esta IP ya está bloqueada"}
+        print(f"Error bloqueando IP: {e}")
+        return {"exito": False, "mensaje": str(e)}
+
+def eliminar_ip_bloqueada(id_ip):
+    """Eliminar una IP de la lista de bloqueadas"""
+    conn = get_db_connection()
+    if not conn: return False
+    try:
+        cursor = conn.cursor()
+        sql = "DELETE FROM IP_Bloqueada WHERE id_ip = %s"
+        cursor.execute(sql, (id_ip,))
+        conn.commit()
+        rows = cursor.rowcount
+        conn.close()
+        return rows > 0
+    except Exception as e:
+        print(f"Error eliminando IP: {e}")
+        return False
+
+def verificar_ip_bloqueada(direccion_ip):
+    """Verificar si una IP está bloqueada"""
+    conn = get_db_connection()
+    if not conn: return False
+    try:
+        cursor = conn.cursor()
+        sql = "SELECT 1 FROM IP_Bloqueada WHERE direccion_ip = %s"
+        cursor.execute(sql, (direccion_ip,))
+        result = cursor.fetchone()
+        conn.close()
+        return result is not None
+    except Exception as e:
+        print(f"Error verificando IP: {e}")
+        return False
 
 # ==========================================
 # SECCIÓN 5: FUNCIONES PANEL DE AGENTE DE SOPORTE

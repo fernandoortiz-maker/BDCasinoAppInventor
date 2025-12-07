@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gestionar perfil de Usuario — Royal Crumbs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <style>
@@ -32,7 +32,7 @@
     </style>
 </head>
 
-<body>
+<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
     <div class="rc-container">
 
         <!-- ===== ENCABEZADO ===== -->
@@ -84,6 +84,7 @@
     <script>
         const params = new URLSearchParams(window.location.search);
         const userId = params.get('id');
+        let currentUserActive = true; // Estado actual del usuario
 
         async function cargarUsuario() {
             if (!userId) {
@@ -104,11 +105,9 @@
                     document.getElementById('apellido').value = user.apellido;
                     document.getElementById('saldo').value = `$${user.saldo_actual || 0.00}`;
 
-                    if (user.activo) {
-                        document.getElementById('btn-activo').classList.add('active');
-                    } else {
-                        document.getElementById('btn-inactivo').classList.add('blocked');
-                    }
+                    // Guardar estado actual
+                    currentUserActive = user.activo;
+                    actualizarBotonesEstado(user.activo);
 
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('userForm').style.display = 'block';
@@ -122,8 +121,60 @@
             }
         }
 
+        // Actualizar apariencia de los botones según el estado
+        function actualizarBotonesEstado(activo) {
+            const btnActivo = document.getElementById('btn-activo');
+            const btnInactivo = document.getElementById('btn-inactivo');
+
+            // Limpiar clases
+            btnActivo.classList.remove('active');
+            btnInactivo.classList.remove('blocked');
+
+            if (activo) {
+                btnActivo.classList.add('active');
+            } else {
+                btnInactivo.classList.add('blocked');
+            }
+        }
+
+        // Función para cambiar el estado del usuario
+        async function cambiarEstado(nuevoEstado) {
+            if (currentUserActive === nuevoEstado) return; // No hay cambio
+
+            const accion = nuevoEstado ? 'activar' : 'desactivar';
+            const confirmar = confirm(`¿Está seguro de ${accion} esta cuenta de usuario?`);
+
+            if (!confirmar) return;
+
+            try {
+                const res = await fetch(`/api/admin/usuarios/${userId}/estado`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ activo: nuevoEstado })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    currentUserActive = nuevoEstado;
+                    actualizarBotonesEstado(nuevoEstado);
+                    alert(data.mensaje);
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo cambiar el estado'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error de conexión al cambiar el estado');
+            }
+        }
+
+        // Event listeners para los botones de estado
+        document.getElementById('btn-activo').addEventListener('click', () => cambiarEstado(true));
+        document.getElementById('btn-inactivo').addEventListener('click', () => cambiarEstado(false));
+
         document.addEventListener("DOMContentLoaded", cargarUsuario);
     </script>
+    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>

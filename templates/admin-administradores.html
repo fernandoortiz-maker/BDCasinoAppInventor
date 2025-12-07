@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Administradores — Royal Crumbs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+
+<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
+    <div class="rc-container">
+
+        <!-- ===== ENCABEZADO ===== -->
+        <header class="rc-header">
+            <a href="/admin/gestion-usuarios" class="rc-back">‹</a>
+            <h1 class="rc-screen-title">Administradores</h1>
+            <div></div>
+        </header>
+
+        <!-- ===== BUSCADOR ===== -->
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Buscar por email o nombre..." />
+        </div>
+
+        <!-- LISTA DE ADMINISTRADORES -->
+        <section class="users-list" id="admins-list-container">
+            <p style="text-align: center; color: white; padding: 20px;">Cargando administradores...</p>
+        </section>
+
+    </div>
+
+    <script>
+        const container = document.getElementById("admins-list-container");
+        const searchInput = document.getElementById("searchInput");
+        let allAdmins = [];
+
+        // Función para dibujar la lista
+        function dibujarLista(admins) {
+            container.innerHTML = "";
+
+            if (admins.length === 0) {
+                container.innerHTML = "<p style='text-align:center; color: #fff;'>No se encontraron administradores.</p>";
+                return;
+            }
+
+            admins.forEach(admin => {
+                const statusColor = admin.activo ? '#4CAF50' : '#f44336';
+                const statusText = admin.activo ? 'Activo' : 'Inactivo';
+
+                const itemHTML = `
+                    <a href="/admin/usuarios/perfil?id=${admin.id_usuario}" class="user-item">
+                        <div class="user-info">
+                            <div style="width:40px; height:40px; background:#ab925c; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:black;">
+                                ${admin.nombre.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <p class="username">${admin.nombre} ${admin.apellido}</p>
+                                <p class="email">${admin.email}</p>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="color: ${statusColor}; font-weight: bold; font-size: 0.9em;">
+                                ${statusText}
+                            </span>
+                            <p style="color: #ab925c; font-size: 0.8em; margin-top: 3px;">Admin</p>
+                        </div>
+                    </a>
+                `;
+                container.insertAdjacentHTML('beforeend', itemHTML);
+            });
+        }
+
+        // Función para cargar administradores
+        async function cargarAdministradores() {
+            container.innerHTML = `<p style="text-align: center; color: white;">Cargando administradores...</p>`;
+            try {
+                const res = await fetch(`/api/admin/administradores`);
+                const data = await res.json();
+
+                if (data.error) {
+                    container.innerHTML = `<p style='text-align:center; color: red;'>${data.error}</p>`;
+                    return;
+                }
+
+                allAdmins = data.admins;
+                dibujarLista(allAdmins);
+
+            } catch (error) {
+                console.error("Error al cargar administradores:", error);
+                container.innerHTML = "<p style='text-align:center; color: red;'>Error al cargar la lista.</p>";
+            }
+        }
+
+        // Buscador
+        searchInput.addEventListener("input", (e) => {
+            const termino = e.target.value.toLowerCase();
+            const filtrados = allAdmins.filter(admin =>
+                admin.nombre.toLowerCase().includes(termino) ||
+                admin.apellido.toLowerCase().includes(termino) ||
+                admin.email.toLowerCase().includes(termino)
+            );
+            dibujarLista(filtrados);
+        });
+
+        document.addEventListener("DOMContentLoaded", cargarAdministradores);
+    </script>
+    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
+</body>
+
+</html>

@@ -3,56 +3,151 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Promoción — Royal Crumbs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Promociones — Royal Crumbs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 
-<body>
+<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
     <div class="rc-container">
 
         <!-- ===== ENCABEZADO ===== -->
         <header class="rc-header">
             <a href="/admin" class="rc-back">‹</a>
-            <h1 class="rc-screen-title">Crear Promoción</h1>
+            <h1 class="rc-screen-title">Promociones</h1>
             <div></div>
         </header>
 
         <!-- ===== FORMULARIO DE PROMOCIÓN ===== -->
-        <form class="promo-form">
-            <input type="text" placeholder="Nombre de la Promoción" required>
-            <input type="text" placeholder="Tipo de Bono" required>
-            <input type="number" placeholder="Valor del Bono" required>
-            <input type="text" placeholder="Requisitos de Apuesta" required>
-            <input type="number" placeholder="Periodo de Validez (días)" required>
+        <form class="promo-form" id="promoForm">
+            <label>Nombre del Bono</label>
+            <input type="text" name="nombre_bono" placeholder="Ej: 200% Bono de Bienvenida" required>
 
-            <button type="button" class="btn-gold">Crear Promoción</button>
-            <button type="submit" class="btn-gold secondary">Guardar</button>
+            <label>Tipo de Bono</label>
+            <select name="tipo" required>
+                <option value="">Seleccionar tipo...</option>
+                <option value="Bienvenida">Bienvenida</option>
+                <option value="Recarga">Recarga</option>
+                <option value="Fidelidad">Fidelidad</option>
+                <option value="Referido">Referido</option>
+                <option value="Promocional">Promocional</option>
+            </select>
+
+            <label>Descripción</label>
+            <input type="text" name="descripcion" placeholder="Ej: 200% hasta $2000 MXN en tu primer depósito" required>
+
+            <label>Fecha de Expiración (opcional)</label>
+            <input type="date" name="fecha_expiracion">
+
+            <button type="submit" class="btn-gold" id="btnCrear">Crear Promoción</button>
         </form>
 
         <!-- ===== PROMOCIONES ACTIVAS ===== -->
         <section class="promo-list">
-            <h2 style="color:white; margin-bottom:15px;">Promociones Activas</h2>
-
-            <div class="promo-card">
-                <div class="promo-info">
-                    <p class="promo-title">200% Hasta $2000 mxn</p>
-                    <p class="promo-subtitle">Bono de Bienvenida</p>
-                </div>
-                <span class="promo-status">Activo</span>
+            <h2
+                style="color:white; margin-top: 30px; margin-bottom:15px; border-top: 1px solid #444; padding-top: 20px;">
+                Promociones Existentes
+            </h2>
+            <div id="promos-container">
+                <p style="text-align: center; color: white;">Cargando promociones...</p>
             </div>
-
-            <div class="promo-card">
-                <div class="promo-info">
-                    <p class="promo-title">150% Hasta $1500 mxn</p>
-                    <p class="promo-subtitle">Bono Semanal</p>
-                </div>
-                <span class="promo-status">Activo</span>
-            </div>
-
         </section>
 
     </div>
+
+    <script>
+        const promoForm = document.getElementById('promoForm');
+        const container = document.getElementById('promos-container');
+        const btnCrear = document.getElementById('btnCrear');
+
+        // Cargar promociones existentes
+        async function cargarPromociones() {
+            container.innerHTML = '<p style="text-align: center; color: white;">Cargando promociones...</p>';
+            try {
+                const res = await fetch('/api/admin/promos');
+                const data = await res.json();
+
+                if (data.error) {
+                    container.innerHTML = `<p style='text-align:center; color: red;'>${data.error}</p>`;
+                    return;
+                }
+
+                if (!data.promos || data.promos.length === 0) {
+                    container.innerHTML = "<p style='text-align:center; color: #888;'>No hay promociones creadas.</p>";
+                    return;
+                }
+
+                container.innerHTML = '';
+                data.promos.forEach(promo => {
+                    const statusColor = promo.activo ? '#4CAF50' : '#f44336';
+                    const statusText = promo.activo ? 'Activo' : 'Inactivo';
+                    const fecha = promo.fecha_expiracion ? new Date(promo.fecha_expiracion).toLocaleDateString() : 'Sin expiración';
+
+                    const cardHTML = `
+                        <div class="promo-card">
+                            <div class="promo-info">
+                                <p class="promo-title">${promo.nombre_bono}</p>
+                                <p class="promo-subtitle">${promo.descripcion || promo.tipo}</p>
+                                <small style="color: #666;">Tipo: ${promo.tipo} | Expira: ${fecha}</small>
+                            </div>
+                            <span class="promo-status" style="color: ${statusColor};">${statusText}</span>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', cardHTML);
+                });
+
+            } catch (error) {
+                console.error("Error al cargar promociones:", error);
+                container.innerHTML = "<p style='text-align:center; color: red;'>Error al cargar promociones.</p>";
+            }
+        }
+
+        // Crear nueva promoción
+        promoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(promoForm);
+            const data = {};
+            formData.forEach((value, key) => data[key] = value);
+
+            // Validar campos requeridos
+            if (!data.nombre_bono || !data.tipo || !data.descripcion) {
+                alert('Por favor complete todos los campos requeridos.');
+                return;
+            }
+
+            btnCrear.disabled = true;
+            btnCrear.textContent = 'Creando...';
+
+            try {
+                const res = await fetch('/api/admin/promos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                } else if (result.success) {
+                    alert('¡Promoción creada con éxito!');
+                    promoForm.reset();
+                    cargarPromociones();
+                }
+
+            } catch (error) {
+                console.error("Error al crear promoción:", error);
+                alert('Error de conexión al crear la promoción.');
+            }
+
+            btnCrear.disabled = false;
+            btnCrear.textContent = 'Crear Promoción';
+        });
+
+        document.addEventListener('DOMContentLoaded', cargarPromociones);
+    </script>
+    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>
