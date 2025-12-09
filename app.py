@@ -76,6 +76,19 @@ def api_login():
             session.permanent = True
             session["user_id"] = usuario["email"]
             session["rol"] = usuario["nombre_rol"]
+
+            # --- GENERAR REDIRECT URL PARA APP INVENTOR ---
+            # Esto permite que App Inventor navegue directamente sin perder la sesión
+            # El WebViewer debe usar esta URL tal cual.
+            rol = usuario["nombre_rol"]
+            redirect_url = "/"
+
+            if rol == "Administrador":
+                redirect_url = f"/admin?user_email={usuario['email']}"
+            elif rol in ["Agente", "Soporte"]:
+                redirect_url = f"/agente?user_email={usuario['email']}"
+            else:
+                redirect_url = f"/?user_email={usuario['email']}"
             
             return jsonify({
                 "exito": True, 
@@ -83,7 +96,8 @@ def api_login():
                 "user_id": usuario["email"],
                 "nombre": usuario["nombre"],
                 "saldo": float(usuario["saldo_actual"]),
-                "rol": usuario["nombre_rol"]
+                "rol": usuario["nombre_rol"],
+                "redirect_url": redirect_url  # <--- NUEVO CAMPO CRÍTICO
             })
         else:
             return jsonify({"exito": False, "mensaje": "Credenciales incorrectas"}), 401
@@ -674,44 +688,70 @@ def api_admin_usuario_cambiar_estado(id_usuario):
 # SECCIÓN 5: PANEL DE AGENTE DE SOPORTE
 # ==========================================
 
+def agente_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Detectar usuario desde App Inventor (parámetro URL) o sesión
+        user_id = request.args.get('user_id') or request.args.get('user_email') or session.get("user_id")
+        
+        # Verificar que hay usuario válido
+        if not user_id or user_id == "Invitado":
+            return jsonify({"error": "No autorizado", "mensaje": "Debe iniciar sesión para acceder al panel de agente"}), 401
+        
+        # Guardar en sesión
+        session["user_id"] = user_id
+        session.permanent = True
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
 # --- RUTAS HTML ---
 
 @app.route("/agente")
+@agente_required
 def panel_agente():
     """Menú principal del panel de agente"""
     return render_template("agente.html")
 
 @app.route("/agente/dashboard")
+@agente_required
 def agente_dashboard():
     """Dashboard del agente con métricas"""
     return render_template("agente-dashboard.html")
 
 @app.route("/agente/tickets")
+@agente_required
 def agente_tickets():
     """Lista de todos los tickets"""
     return render_template("agente-tickets.html")
 
 @app.route("/agente/ticket/<int:id_ticket>")
+@agente_required
 def agente_ticket_detalle(id_ticket):
     """Detalle de un ticket específico"""
     return render_template("agente-ticket-detalle.html")
 
 @app.route("/agente/mis-tickets")
+@agente_required
 def agente_mis_tickets():
     """Tickets asignados al agente"""
     return render_template("agente-mis-tickets.html")
 
 @app.route("/agente/chats")
+@agente_required
 def agente_chats():
     """Chats en espera de ser asignados"""
     return render_template("agente-chats.html")
 
 @app.route("/agente/chat/<int:id_chat>")
+@agente_required
 def agente_chat_activo(id_chat):
     """Vista de chat activo"""
     return render_template("agente-chat-activo.html")
 
 @app.route("/agente/mis-chats")
+@agente_required
 def agente_mis_chats():
     """Chats asignados al agente"""
     return render_template("agente-mis-chats.html")
