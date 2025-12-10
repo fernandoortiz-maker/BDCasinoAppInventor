@@ -1,0 +1,25 @@
+# Security
+
+## .env files
+.env
+.env.local
+.env.*.local
+
+## Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+## Secrets
+secrets/
+*.secret
+
+## Scripts con credenciales de desarrollo
+crear_usuarios_prueba.py
+*_credentials.py
+*_secrets.py
+
+## Database dumps con datos sensibles
+*.sql.backup
+dump.sql

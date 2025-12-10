@@ -201,6 +201,50 @@ def historial_auditoria():
         
     return render_template("auditor-historial.html", auditorias=auditorias)
 
+# Función para calcular no conformidades
+def calcular_no_conformidades(respuestas):
+    """Calcula no conformidades menores, mayores y sanciones"""
+    consecutivas = 0
+    no_conformidades_menores = []
+    no_conformidades_mayores = []
+    preguntas_lista = list(respuestas.items())
+    
+    for i, (pregunta, respuesta) in enumerate(preguntas_lista):
+        if respuesta in ["No Cumple", "Cumple Parcialmente"]:
+            consecutivas += 1
+            if consecutivas >= 3:
+                # Detectar no conformidad menor
+                inicio = max(0, i - 2)
+                preguntas_afectadas = [preguntas_lista[j][0] for j in range(inicio, i + 1)]
+                no_conformidades_menores.append({
+                    "tipo": "menor",
+                    "descripcion": f"No Conformidad Menor detectada en {consecutivas} preguntas consecutivas",
+                    "preguntas": preguntas_afectadas
+                })
+                consecutivas = 0
+        else:
+            consecutivas = 0
+    
+    # Verificar no conformidades mayores (3 menores = 1 mayor)
+    if len(no_conformidades_menores) >= 3:
+        no_conformidades_mayores.append({
+            "tipo": "mayor",
+            "descripcion": f"No Conformidad Mayor: Se detectaron {len(no_conformidades_menores)} no conformidades menores"
+        })
+    
+    # Verificar sanción económica (3 mayores)
+    sancion = False
+    if len(no_conformidades_mayores) >= 3:
+        sancion = True
+    
+    return {
+        "menores": no_conformidades_menores,
+        "mayores": no_conformidades_mayores,
+        "sancion": sancion,
+        "total_menores": len(no_conformidades_menores),
+        "total_mayores": len(no_conformidades_mayores)
+    }
+
 
 # D. API PARA GUARDAR LOS DATOS EN NEON
 @app.route("/api/guardar_checklist", methods=["POST"])
@@ -212,11 +256,23 @@ def api_guardar_checklist():
         if not email:
             return jsonify({"exito": False, "mensaje": "No logueado"}), 401
 
-        checklist = data.get("respuestas")
-        # Convertimos el diccionario a texto para guardar en BD
-        checklist_json = json.dumps(checklist)
+        respuestas = data.get("respuestas")
+        comentarios = data.get("comentarios", {})
         
-        id_audit = guardar_auditoria(email, f"Auditoría {data.get('fecha')}", checklist_json)
+        # Calcular no conformidades
+        no_conformidades = calcular_no_conformidades(respuestas)
+        
+        # Preparar datos completos para guardar
+        datos_completos = {
+            "respuestas": respuestas,
+            "comentarios": comentarios,
+            "no_conformidades": no_conformidades
+        }
+        
+        # Convertimos el diccionario a texto para guardar en BD
+        datos_json = json.dumps(datos_completos, ensure_ascii=False)
+        
+        id_audit = guardar_auditoria(email, f"Auditoría {data.get('fecha')}", datos_json)
         
         if id_audit:
             # URL para descargar el PDF
@@ -236,138 +292,13 @@ def ver_pdf_page(id_auditoria):
 
 @app.route("/api/pdf_auditoria/<int:id_auditoria>", methods=["GET"])
 def generar_pdf(id_auditoria):
+    from pdf_generator import generar_pdf_profesional
+    
     datos = obtener_datos_auditoria(id_auditoria)
     if not datos:
         return "Auditoría no encontrada", 404
-        
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
     
-    # --- CONFIGURACIÓN DE FUENTES Y COLORES ---
-    # Usaremos Helvetica como sustituto estándar de Arial
-    font_title = "Helvetica-Bold"
-    font_body = "Helvetica"
-    size_title = 14
-    size_body = 12
-    
-    # Establecer color de texto a negro (opaco)
-    c.setFillColorRGB(0, 0, 0)  # Negro sólido
-    
-    # --- ENCABEZADO ---
-    c.setFont(font_title, size_title)
-    c.drawString(50, height - 50, "REPORTE DE AUDITORÍA ISO 14001")
-    
-    c.setFont(font_body, size_body)
-    c.drawString(50, height - 80, f"Auditor: {datos['nombre']} {datos['apellido']}")
-    c.drawString(50, height - 100, f"Email: {datos['email']}")
-    c.drawString(400, height - 80, f"Fecha: {datos['fecha_auditoria']}")
-    c.drawString(400, height - 100, f"ID Reporte: #{id_auditoria}")
-    
-    c.setLineWidth(1)
-    c.line(50, height - 115, 562, height - 115)
-    
-    # --- CONTENIDO ---
-    y = height - 150
-    items = datos['datos_auditoria']
-    
-    # Asegurar que items es un diccionario
-    if isinstance(items, str):
-        try:
-            items = json.loads(items)
-        except Exception as e:
-            print(f"Error parseando JSON: {e}")
-            items = {}
-            
-    if not isinstance(items, dict):
-         items = {}
-    
-    c.setFont(font_body, size_body)
-    c.setFillColorRGB(0, 0, 0)  # Asegurar texto negro
-    
-    # Dimensiones de la tabla
-    # Col 1: Pregunta (Ancho variable)
-    # Col 2: CUMPLE (Ancho fijo)
-    # Col 3: X (Casilla)
-    # Col 4: NO CUMPLE (Ancho fijo)
-    # Col 5: X (Casilla)
-    # Col 6: PARCIAL (Ancho fijo)
-    # Col 7: X (Casilla)
-    
-    # Coordenadas X
-    x_start = 50
-    x_cumple_label = 280
-    x_cumple_box = 340
-    x_no_cumple_label = 365
-    x_no_cumple_box = 445
-    x_parcial_label = 470
-    x_parcial_box = 537
-    x_end = 562
-    
-    row_height = 30
-    
-    for pregunta, respuesta in items.items():
-        # Control de salto de página
-        if y < 50:
-            c.showPage()
-            y = height - 50
-            c.setFont(font_body, size_body)
-            c.setFillColorRGB(0, 0, 0)  # Restablecer color negro en nueva página
-        
-        # Determinar marcas
-        estado = str(respuesta)
-        mark_cumple = "X" if "Cumple" in estado and "No" not in estado and "Parcialmente" not in estado else ""
-        mark_no_cumple = "X" if "No Cumple" in estado else ""
-        mark_parcial = "X" if "Parcialmente" in estado else ""
-        
-        # Dibujar líneas horizontales (Arriba y Abajo de la fila)
-        c.setStrokeColorRGB(0, 0, 0)  # Líneas negras
-        c.setLineWidth(0.5)
-        c.line(x_start, y + row_height, x_end, y + row_height) # Arriba
-        c.line(x_start, y, x_end, y) # Abajo
-        
-        # Dibujar líneas verticales
-        c.line(x_start, y, x_start, y + row_height) # Inicio
-        c.line(x_cumple_label, y, x_cumple_label, y + row_height) # Separa Pregunta de Cumple
-        c.line(x_cumple_box, y, x_cumple_box, y + row_height) # Separa Label Cumple de Box
-        c.line(x_no_cumple_label, y, x_no_cumple_label, y + row_height) # Separa Box Cumple de Label No Cumple
-        c.line(x_no_cumple_box, y, x_no_cumple_box, y + row_height) # Separa Label No Cumple de Box
-        c.line(x_parcial_label, y, x_parcial_label, y + row_height) # Separa Box No Cumple de Label Parcial
-        c.line(x_parcial_box, y, x_parcial_box, y + row_height) # Separa Label Parcial de Box
-        c.line(x_end, y, x_end, y + row_height) # Fin
-        
-        # Texto Centrado Verticalmente
-        text_y = y + 10
-        
-        # Pregunta (Recortar si es muy larga para que quepa en la celda)
-        c.setFillColorRGB(0, 0, 0)  # Texto negro
-        c.setFont(font_body, 10) # Un poco más pequeño para que quepa mejor
-        pregunta_corta = (pregunta[:45] + '..') if len(pregunta) > 45 else pregunta
-        c.drawString(x_start + 5, text_y, pregunta_corta)
-        
-        # Labels
-        c.setFont("Helvetica-Bold", 8)
-        c.drawString(x_cumple_label + 5, text_y, "CUMPLE")
-        
-        c.drawString(x_no_cumple_label + 5, text_y + 5, "NO")
-        c.drawString(x_no_cumple_label + 5, text_y - 5, "CUMPLE")
-        
-        c.drawString(x_parcial_label + 5, text_y + 5, "CUMPLE")
-        c.drawString(x_parcial_label + 5, text_y - 5, "PARCIAL")
-        
-        # Marcas (X)
-        c.setFont("Helvetica-Bold", 12)
-        if mark_cumple:
-            c.drawCentredString(x_cumple_box + 12, text_y, "X")
-        if mark_no_cumple:
-            c.drawCentredString(x_no_cumple_box + 12, text_y, "X")
-        if mark_parcial:
-            c.drawCentredString(x_parcial_box + 12, text_y, "X")
-            
-        y -= row_height
-        
-    c.save()
-    buffer.seek(0)
+    buffer = generar_pdf_profesional(datos, id_auditoria)
     
     return send_file(
         buffer, 

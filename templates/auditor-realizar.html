@@ -264,6 +264,7 @@
         // Generar el cuestionario dinámicamente
         var cuestionario = document.getElementById('cuestionario');
         var contador = 0;
+        var seccionActual = 0;
 
         datosAuditoria.forEach(function (item) {
             if (item.type === "titulo") {
@@ -274,6 +275,17 @@
                     contador++;
                     cuestionario.innerHTML += crearPregunta('q' + contador, pregunta);
                 });
+
+                // Agregar campo de comentarios después de cada sección
+                seccionActual++;
+                cuestionario.innerHTML += `
+                    <div class="question-block" style="margin-top:15px; background:#1a1a1a; padding:15px; border-radius:8px;">
+                        <label class="question-text" style="color:#ab925c; font-weight:bold;">💬 Comentarios de esta sección:</label>
+                        <textarea name="comentario_seccion_${seccionActual}" 
+                                  placeholder="Agregue observaciones, hallazgos o recomendaciones (opcional)..."
+                                  style="width:100%; min-height:80px; padding:10px; background:#2a2a2a; border:1px solid #ab925c; color:#fff; border-radius:5px; font-family:sans-serif; resize:vertical; margin-top:8px;"></textarea>
+                    </div>
+                `;
             }
         });
 
@@ -283,20 +295,30 @@
 
             const formData = new FormData(this);
             const respuestas = {};
+            const comentarios = {};
 
-            // Recopilar todas las respuestas
+            // Recopilar todas las respuestas y comentarios
             for (let [key, value] of formData.entries()) {
                 if (key !== 'fecha') {
-                    const pregunta = document.querySelector(`input[name="${key}"]`)
-                        .closest('.question-block')
-                        .querySelector('.question-text').textContent;
-                    respuestas[pregunta] = value;
+                    if (key.startsWith('comentario_seccion_')) {
+                        // Es un comentario
+                        if (value.trim()) {  // Solo guardar si no está vacío
+                            comentarios[key] = value;
+                        }
+                    } else {
+                        // Es una respuesta
+                        const pregunta = document.querySelector(`input[name="${key}"]`)
+                            .closest('.question-block')
+                            .querySelector('.question-text').textContent;
+                        respuestas[pregunta] = value;
+                    }
                 }
             }
 
             const datos = {
                 fecha: formData.get('fecha'),
-                respuestas: respuestas
+                respuestas: respuestas,
+                comentarios: comentarios
             };
 
             try {

@@ -1,0 +1,20 @@
+# INSTRUCCIONES PARA REEMPLAZAR LA FUNCIÓN generar_pdf EN app.py
+# 
+# Reemplaza las líneas 293-426 con el siguiente código:
+
+@app.route("/api/pdf_auditoria/<int:id_auditoria>", methods=["GET"])
+def generar_pdf(id_auditoria):
+    from pdf_generator import generar_pdf_profesional
+    
+    datos = obtener_datos_auditoria(id_auditoria)
+    if not datos:
+        return "Auditoría no encontrada", 404
+    
+    buffer = generar_pdf_profesional(datos, id_auditoria)
+    
+    return send_file(
+        buffer, 
+        as_attachment=False, 
+        download_name=f"reporte_{id_auditoria}.pdf", 
+        mimetype='application/pdf'
+    )
