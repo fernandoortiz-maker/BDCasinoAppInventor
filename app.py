@@ -20,7 +20,7 @@ from db_config import (
 )
 
 # --- 1. INICIALIZACIÓN ---
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static', static_folder='static')
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 # --- 2. CONFIGURACIÓN DE COOKIES (CRÍTICO PARA APP INVENTOR) ---
@@ -39,6 +39,28 @@ def index():
 @app.route("/login", methods=["GET"])
 def login_page():
     return render_template("login.html")
+
+@app.route("/api/user_info", methods=["GET"])
+def api_user_info():
+    """Obtener información del usuario actual por email (para localStorage sync)"""
+    email = request.args.get('email') or session.get('user_id')
+    if not email:
+        return jsonify({"error": "No email provided"}), 400
+    
+    try:
+        perfil = obtener_perfil(email)
+        if perfil:
+            return jsonify({
+                "id_usuario": perfil.get('id_usuario') or perfil.get('id'),
+                "email": perfil.get('email'),
+                "nombre": perfil.get('nombre'),
+                "apellido": perfil.get('apellido'),
+                "nombre_rol": perfil.get('nombre_rol')
+            })
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    except Exception as e:
+        print(f"Error en api_user_info: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/registrar", methods=["POST"])
 def api_registrar():
@@ -698,19 +720,24 @@ def api_agente_dashboard(id_agente):
         """, (id_agente,))
         mis_tickets = cursor.fetchone()[0]
         
-        # Chats en espera
-        cursor.execute("""
-            SELECT COUNT(*) FROM Chat 
-            WHERE estado = 'Esperando'
-        """)
-        chats_esperando = cursor.fetchone()[0]
-        
-        # Mis chats activos
-        cursor.execute("""
-            SELECT COUNT(*) FROM Chat 
-            WHERE id_agente = %s AND estado = 'Activo'
-        """, (id_agente,))
-        mis_chats = cursor.fetchone()[0]
+        # Chats en espera (graceful fallback if Chat table doesn't exist)
+        chats_esperando = 0
+        mis_chats = 0
+        try:
+            cursor.execute("""
+                SELECT COUNT(*) FROM Chat 
+                WHERE estado = 'Esperando'
+            """)
+            chats_esperando = cursor.fetchone()[0]
+            
+            # Mis chats activos
+            cursor.execute("""
+                SELECT COUNT(*) FROM Chat 
+                WHERE id_agente = %s AND estado = 'Activo'
+            """, (id_agente,))
+            mis_chats = cursor.fetchone()[0]
+        except Exception as chat_err:
+            print(f"Chat table query failed (may not exist): {chat_err}")
         
         # Cerrados hoy
         cursor.execute("""
@@ -800,10 +827,6 @@ def api_agente_tickets():
         import traceback
         traceback.print_exc()
         return jsonify({"tickets": []}), 500
-        return jsonify({"tickets": tickets})
-    except Exception as e:
-        print(f"Error obteniendo tickets: {e}")
-        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/agente/ticket/<int:id_ticket>", methods=["GET"])
 def api_agente_ticket_detalle(id_ticket):

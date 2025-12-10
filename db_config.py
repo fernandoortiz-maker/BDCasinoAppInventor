@@ -82,9 +82,10 @@ def obtener_perfil(email):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         sql = """
-            SELECT u.id_usuario, u.nombre, u.apellido, u.email, s.saldo_actual 
+            SELECT u.id_usuario, u.nombre, u.apellido, u.email, s.saldo_actual, r.nombre as nombre_rol
             FROM Usuario u
             JOIN Saldo s ON u.id_usuario = s.id_usuario
+            LEFT JOIN Rol r ON u.id_rol = r.id_rol
             WHERE u.email = %s
         """
         cursor.execute(sql, (email,))
