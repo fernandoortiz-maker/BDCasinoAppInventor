@@ -39,19 +39,29 @@ def check_data():
             
         print(f"\n[INFO] Valid tickets visible to API (INNER JOIN): {valid_count}")
 
-        # 3. Simulate the exact API query
-        print("\n[INFO] Simulating API Query...")
-        query = """
-            SELECT 
-                s.id_ticket,
-                s.asunto
-            FROM Soporte s
-            JOIN Usuario uj ON s.id_jugador = uj.id_usuario
-            LEFT JOIN Usuario ua ON s.id_agente = ua.id_usuario
-        """
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        print(f"[OK] API would return {len(rows)} rows.")
+        # 3. Check for Active Tickets (like the API)
+        print("\n[INFO] Checking for Active Tickets (Not 'Cerrado')...")
+        cursor.execute("""
+            SELECT id_jugador, COUNT(*) 
+            FROM Soporte 
+            WHERE estado != 'Cerrado'
+            GROUP BY id_jugador
+        """)
+        active_counts = cursor.fetchall()
+        
+        if not active_counts:
+            print("[WARN] NO ACTIVE TICKETS FOUND IN DB!")
+        else:
+            print(f"[INFO] Found {len(active_counts)} users with active tickets:")
+            for uid, count in active_counts:
+                print(f"  - User ID {uid}: {count} tickets")
+
+        # 4. Check specific user from previous context if possible (or just list some IDs)
+        print("\n[INFO] Sample User IDs in Usuario Table:")
+        cursor.execute("SELECT id_usuario, email, nombre FROM Usuario LIMIT 5")
+        users = cursor.fetchall()
+        for u in users:
+            print(f"  - ID: {u[0]} | Email: {u[1]} | Name: {u[2]}")
 
     except Exception as e:
         print(f"[ERROR] Error: {e}")
@@ -61,6 +71,6 @@ def check_data():
 if __name__ == "__main__":
     from db_config import get_db_connection
     if not get_db_connection():
-         print("[ERROR] Failed to connect to DB (Check DATABASE_URL)")
+         print("[ERROR] Failed to connect to DB")
     else:
          check_data()

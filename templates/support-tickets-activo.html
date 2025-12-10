@@ -111,19 +111,30 @@
         async function cargarTickets() {
             const container = document.getElementById('tickets-container');
 
+            console.log("Cargando tickets para ID:", userId); // DEBUG
+
             if (!userId) {
-                container.innerHTML = '<p style="text-align: center; color: red;">No has iniciado sesión.</p>';
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 5px;">
+                        <strong>⚠️ No has iniciado sesión</strong><br>
+                        Por favor <a href="/login">inicia sesión</a> para ver tus tickets.
+                    </div>
+                `;
                 return;
             }
 
             try {
                 const response = await fetch(`/api/support/tickets/active/${userId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
+                console.log("Datos recibidos:", data); // DEBUG
 
                 mostrarTickets(data);
             } catch (error) {
                 console.error('Error:', error);
-                container.innerHTML = '<p style="text-align: center; color: red;">Error al cargar tickets.</p>';
+                container.innerHTML = `<p style="text-align: center; color: red;">Error al cargar tickets: ${error.message}</p>`;
             }
         }
 
