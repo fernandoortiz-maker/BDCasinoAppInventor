@@ -84,7 +84,7 @@
 
         <!-- ===== ENCABEZADO ===== -->
         <header class="rc-header">
-            <a href="/admin/usuarios" class="rc-back">‹</a>
+            <a href="#" class="rc-back" id="back-btn">‹</a>
             <h1 class="rc-screen-title">Gestionar perfil</h1>
             <div></div>
         </header>
@@ -158,6 +158,14 @@
 
                     estadoActual = currentUser.activo;
                     actualizarBotonesEstado();
+
+                    // Actualizar botón de atrás según el rol
+                    const backBtn = document.getElementById('back-btn');
+                    if (['Administrador', 'Auditor', 'Agente de Soporte'].includes(currentUser.rol)) {
+                        backBtn.href = '/admin/administradores';
+                    } else {
+                        backBtn.href = '/admin/usuarios';
+                    }
 
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('userForm').style.display = 'block';
