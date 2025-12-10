@@ -3,9 +3,19 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Administradores y Auditores — Royal Crumbs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <style>
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+    </style>
 </head>
 
 <body>
@@ -72,9 +82,10 @@
             // Mostrar cada grupo
             for (const [rol, usuarios] of Object.entries(grupos)) {
                 if (usuarios.length > 0) {
+                    const rolPlural = rol === 'Agente de Soporte' ? 'Agentes de Soporte' : `${rol}es`;
                     html += `
                         <div style="margin-bottom: 30px;">
-                            <h2 style="color: #ab925c; margin-bottom: 15px; font-size: 18px;">${rol}es</h2>
+                            <h2 style="color: #ab925c; margin-bottom: 15px; font-size: 18px;">${rolPlural}</h2>
                             <div class="rc-list-card">
                     `;
 
@@ -108,6 +119,24 @@
         }
 
         document.addEventListener('DOMContentLoaded', cargarUsuarios);
+
+        // Deshabilitar clic derecho
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // Deshabilitar copiar y pegar
+        document.addEventListener('copy', e => e.preventDefault());
+        document.addEventListener('paste', e => e.preventDefault());
+        document.addEventListener('cut', e => e.preventDefault());
+
+        // Deshabilitar atajos de teclado para inspeccionar
+        document.addEventListener('keydown', e => {
+            // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+            if (e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+            }
+        });
     </script>
 </body>
 
