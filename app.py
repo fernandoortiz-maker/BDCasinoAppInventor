@@ -742,10 +742,10 @@ def api_agente_tickets():
                 s.mensaje,
                 s.estado,
                 s.fecha_creacion,
-                uj.nombre || ' ' || uj.apellido as nombre_usuario,
+                COALESCE(uj.nombre, 'Usuario') || ' ' || COALESCE(uj.apellido, 'Desconocido') as nombre_usuario,
                 ua.nombre || ' ' || ua.apellido as nombre_agente
             FROM Soporte s
-            JOIN Usuario uj ON s.id_jugador = uj.id_usuario
+            LEFT JOIN Usuario uj ON s.id_jugador = uj.id_usuario
             LEFT JOIN Usuario ua ON s.id_agente = ua.id_usuario
             WHERE 1=1
         """

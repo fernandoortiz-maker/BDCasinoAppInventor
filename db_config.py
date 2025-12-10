@@ -10,12 +10,12 @@ def get_db_connection():
     try:
         database_url = os.environ.get('DATABASE_URL')
         if not database_url:
-            print("❌ ERROR: Falta DATABASE_URL")
+            print("ERROR: Falta DATABASE_URL")
             return None
         conn = psycopg2.connect(database_url)
         return conn
     except Exception as e:
-        print(f"❌ Error conectando a Neon: {e}")
+        print(f"Error conectando a Neon: {e}")
         return None
 
 # --- USUARIOS Y LOGIN ---
