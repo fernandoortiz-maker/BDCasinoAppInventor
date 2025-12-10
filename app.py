@@ -943,6 +943,45 @@ def api_agente_cerrar_chat():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/support/tickets/active")
+def user_tickets_page():
+    return render_template("support-tickets-activo.html")
+
+@app.route("/api/support/tickets/active/<int:id_jugador>", methods=["GET"])
+def api_get_active_tickets(id_jugador):
+    """Obtener tickets activos de un usuario específico"""
+    try:
+        from db_config import get_db_connection
+        conn = get_db_connection()
+        if not conn:
+            return jsonify([])
+        
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id_ticket, asunto, estado, fecha_creacion
+            FROM Soporte
+            WHERE id_jugador = %s AND estado != 'Cerrado'
+            ORDER BY fecha_creacion DESC
+        """, (id_jugador,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        tickets = []
+        for row in rows:
+            tickets.append({
+                "id_ticket": row[0],
+                "asunto": row[1],
+                "estado": row[2],
+                "fecha_creacion": row[3].isoformat() if row[3] else None
+            })
+            
+        return jsonify(tickets)
+            
+    except Exception as e:
+        print(f"Error api_get_active_tickets: {e}")
+        return jsonify([]), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)

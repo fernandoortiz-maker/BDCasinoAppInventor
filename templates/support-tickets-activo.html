@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mis Tickets - Soporte</title>
+    <!-- Reutilizamos estilos existentes o básicos -->
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            font-size: 24px;
+            color: #333;
+            margin-right: 15px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .ticket-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid #ccc;
+        }
+
+        .status-abierto {
+            border-left-color: #4CAF50;
+        }
+
+        .status-proceso {
+            border-left-color: #FFC107;
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .ticket-id {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .ticket-date {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .ticket-subject {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .ticket-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="back-btn">‹</a>
+            <h1 data-i18n="my_tickets_title">Mis Tickets Activos</h1>
+        </div>
+
+        <div id="tickets-container">
+            <p style="text-align: center; color: #777;" data-i18n="loading">Cargando...</p>
+        </div>
+    </div>
+
+    <script src="/static/js/i18n.js"></script>
+    <script>
+        // Obtener ID real del usuario desde localStorage
+        const userId = localStorage.getItem('userId');
+
+        async function cargarTickets() {
+            const container = document.getElementById('tickets-container');
+
+            if (!userId) {
+                container.innerHTML = '<p style="text-align: center; color: red;">No has iniciado sesión.</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/support/tickets/active/${userId}`);
+                const data = await response.json();
+
+                mostrarTickets(data);
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = '<p style="text-align: center; color: red;">Error al cargar tickets.</p>';
+            }
+        }
+
+        function mostrarTickets(tickets) {
+            const container = document.getElementById('tickets-container');
+
+            if (!tickets || tickets.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #777;">No tienes tickets activos.</p>';
+                return;
+            }
+
+            container.innerHTML = tickets.map(t => {
+                let statusClass = 'status-default';
+                if (t.estado === 'Abierto') statusClass = 'status-abierto';
+                if (t.estado === 'En Proceso') statusClass = 'status-proceso';
+
+                return `
+                    <div class="ticket-card ${statusClass}">
+                        <div class="ticket-header">
+                            <span class="ticket-id">#${t.id_ticket}</span>
+                            <span class="ticket-date">${new Date(t.fecha_creacion).toLocaleDateString()}</span>
+                        </div>
+                        <h3 class="ticket-subject">${t.asunto}</h3>
+                        <span class="ticket-status">${t.estado}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', cargarTickets);
+    </script>
+</body>
+
+</html>
