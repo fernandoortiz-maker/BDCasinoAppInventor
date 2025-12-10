@@ -81,6 +81,11 @@ def api_login():
             session["user_id"] = usuario["email"]
             session["rol"] = usuario["nombre_rol"]
             
+            # Debug logging
+            print(f"✅ LOGIN EXITOSO - Email: {email}")
+            print(f"   Rol asignado en sesión: '{session['rol']}'")
+            print(f"   ID Usuario: {usuario['id_usuario']}")
+            
             return jsonify({
                 "exito": True, 
                 "mensaje": "Bienvenido",
@@ -91,9 +96,11 @@ def api_login():
                 "rol": usuario["nombre_rol"]
             })
         else:
+            print(f"❌ LOGIN FALLIDO - Email: {email}")
             return jsonify({"exito": False, "mensaje": "Credenciales incorrectas"}), 401
             
     except Exception as e:
+        print(f"🔥 ERROR EN LOGIN: {e}")
         return jsonify({"exito": False, "mensaje": str(e)}), 400
 
 # ==========================================
@@ -554,10 +561,22 @@ def agente_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Debug logging
+        print(f"\n🔍 VERIFICACIÓN AGENTE_REQUIRED:")
+        print(f"   user_id en sesión: {session.get('user_id', 'NO EXISTE')}")
+        print(f"   rol en sesión: '{session.get('rol', 'NO EXISTE')}'")
+        print(f"   Sesión completa: {dict(session)}")
+        
         if "user_id" not in session:
+            print("❌ ACCESO DENEGADO: No hay user_id en sesión")
             return render_template("login.html")
-        if session.get("rol") != "Agente de Soporte":
-            return "Acceso denegado. Solo agentes de soporte pueden acceder a esta sección.", 403
+        
+        rol_actual = session.get("rol")
+        if rol_actual != "Agente de Soporte":
+            print(f"❌ ACCESO DENEGADO: Rol '{rol_actual}' != 'Agente de Soporte'")
+            return f"Acceso denegado. Solo agentes de soporte pueden acceder a esta sección. Tu rol actual es: {rol_actual}", 403
+        
+        print("✅ ACCESO PERMITIDO: Usuario es Agente de Soporte")
         return f(*args, **kwargs)
     return decorated_function
 
@@ -567,6 +586,7 @@ def agente_required(f):
 @agente_required
 def panel_agente():
     """Menú principal del panel de agente"""
+    print(f"📋 Accediendo a panel_agente - Usuario: {session.get('user_id')}")
     return render_template("agente.html")
 
 @app.route("/agente/dashboard")
