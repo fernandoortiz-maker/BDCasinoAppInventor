@@ -3,12 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mis Tickets — Agente Soporte</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-tickets.css') }}">
 </head>
 
-<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
+<body>
     <div class="rc-container">
 
         <!-- ENCABEZADO -->
@@ -20,7 +20,7 @@
 
         <!-- LISTA DE TICKETS -->
         <section class="tickets-list" id="tickets-container">
-            <div class="no-tickets">⏳ Cargando mis tickets...</div>
+            <div class="no-tickets">Cargando mis tickets...</div>
         </section>
 
     </div>
@@ -29,32 +29,18 @@
         const idAgente = parseInt(localStorage.getItem('userId'));
 
         async function cargarMisTickets() {
-            const container = document.getElementById('tickets-container');
-            container.innerHTML = '<div class="no-tickets">⏳ Cargando mis tickets...</div>';
-
-            // Validar que hay un ID de agente
-            if (!idAgente || isNaN(idAgente)) {
-                container.innerHTML = '<div class="no-tickets" style="color:#ab925c;">⚠️ Sesión no iniciada. Vuelve a entrar desde la app.</div>';
-                return;
-            }
-
             try {
                 const response = await fetch(`/api/agente/mis-tickets/${idAgente}`);
 
                 if (!response.ok) throw new Error('Error al cargar tickets');
 
                 const data = await response.json();
-
-                if (data.error) {
-                    container.innerHTML = `<div class="no-tickets" style="color:#f44336;">❌ ${data.error}</div>`;
-                    return;
-                }
-
                 mostrarTickets(data.tickets);
 
             } catch (error) {
                 console.error('Error:', error);
-                container.innerHTML = '<div class="no-tickets" style="color:#f44336;">❌ Error al cargar los tickets</div>';
+                document.getElementById('tickets-container').innerHTML =
+                    '<div class="no-tickets">Error al cargar los tickets</div>';
             }
         }
 
@@ -62,7 +48,7 @@
             const container = document.getElementById('tickets-container');
 
             if (!tickets || tickets.length === 0) {
-                container.innerHTML = '<div class="no-tickets">📭 No tienes tickets asignados</div>';
+                container.innerHTML = '<div class="no-tickets">No tienes tickets asignados</div>';
                 return;
             }
 
@@ -92,10 +78,9 @@
         // Cargar al inicio
         cargarMisTickets();
 
-        // Actualizar cada 30 segundos
-        setInterval(cargarMisTickets, 30000);
+        // Actualizar cada 15 segundos
+        setInterval(cargarMisTickets, 15000);
     </script>
-    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>

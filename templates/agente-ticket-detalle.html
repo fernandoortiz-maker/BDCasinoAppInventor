@@ -3,12 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket — Agente Soporte</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-ticket-detalle.css') }}">
 </head>
 
-<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
+<body>
     <div class="rc-container">
 
         <!-- ENCABEZADO -->
@@ -20,7 +20,7 @@
 
         <!-- INFO DEL TICKET -->
         <section class="ticket-info-card" id="ticket-info">
-            <div>⏳ Cargando ticket...</div>
+            <div>Cargando ticket...</div>
         </section>
 
         <!-- ACCIONES -->
@@ -219,10 +219,9 @@
         // Cargar al inicio
         cargarTicket();
 
-        // Actualizar respuestas cada 15 segundos
-        setInterval(cargarTicket, 15000);
+        // Actualizar respuestas cada 10 segundos
+        setInterval(cargarTicket, 10000);
     </script>
-    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>

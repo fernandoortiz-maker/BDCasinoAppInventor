@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Ver Reporte PDF</title>
     <style>
         * {
@@ -48,6 +48,7 @@
             border-radius: 5px;
             text-decoration: none;
             font-weight: bold;
+            cursor: pointer;
         }
 
         .pdf-container {
@@ -96,6 +97,16 @@
         .pdf-controls button:disabled {
             background: #555;
             color: #888;
+            cursor: not-allowed;
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            border-left: 1px solid #555;
+            padding-left: 15px;
+            margin-left: 10px;
         }
     </style>
 </head>
@@ -113,6 +124,12 @@
             <button id="prev">‹ Anterior</button>
             <span>Página <span id="page_num"></span> / <span id="page_count"></span></span>
             <button id="next">Siguiente ›</button>
+
+            <div class="zoom-controls">
+                <button id="zoom-out">-</button>
+                <span id="zoom-level">100%</span>
+                <button id="zoom-in">+</button>
+            </div>
         </div>
     </div>
 
@@ -145,8 +162,8 @@
                 if (window.innerWidth < 600) {
                     var containerWidth = document.getElementById('pdf-container').clientWidth - 40;
                     var originalViewport = page.getViewport({ scale: 1 });
-                    scale = containerWidth / originalViewport.width;
-                    viewport = page.getViewport({ scale: scale });
+                    var mobileScale = containerWidth / originalViewport.width;
+                    viewport = page.getViewport({ scale: mobileScale * scale });
                 }
 
                 canvas.height = viewport.height;
@@ -210,6 +227,27 @@
         document.getElementById('next').addEventListener('click', onNextPage);
 
         /**
+         * Zoom controls
+         */
+        function updateZoomLevel() {
+            document.getElementById('zoom-level').textContent = Math.round(scale * 100) + '%';
+        }
+
+        document.getElementById('zoom-in').addEventListener('click', function () {
+            scale += 0.25;
+            if (scale > 3) scale = 3; // Máximo 300%
+            updateZoomLevel();
+            queueRenderPage(pageNum);
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', function () {
+            scale -= 0.25;
+            if (scale < 0.5) scale = 0.5; // Mínimo 50%
+            updateZoomLevel();
+            queueRenderPage(pageNum);
+        });
+
+        /**
          * Asynchronously downloads PDF.
          */
         pdfjsLib.getDocument(url).promise.then(function (pdfDoc_) {
@@ -217,6 +255,7 @@
             document.getElementById('page_count').textContent = pdfDoc.numPages;
 
             // Initial/first page rendering
+            updateZoomLevel();
             renderPage(pageNum);
         }).catch(function (error) {
             console.error('Error loading PDF:', error);

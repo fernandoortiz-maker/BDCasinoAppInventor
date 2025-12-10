@@ -36,6 +36,10 @@ app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hora
 def index():
     return "✅ Servidor Central del Casino Activo.<br>Usa la App Móvil para interactuar."
 
+@app.route("/login", methods=["GET"])
+def login_page():
+    return render_template("login.html")
+
 @app.route("/api/registrar", methods=["POST"])
 def api_registrar():
     print("--- INICIO DE REGISTRO ---")
@@ -76,28 +80,15 @@ def api_login():
             session.permanent = True
             session["user_id"] = usuario["email"]
             session["rol"] = usuario["nombre_rol"]
-
-            # --- GENERAR REDIRECT URL PARA APP INVENTOR ---
-            # Esto permite que App Inventor navegue directamente sin perder la sesión
-            # El WebViewer debe usar esta URL tal cual.
-            rol = usuario["nombre_rol"]
-            redirect_url = "/"
-
-            if rol == "Administrador":
-                redirect_url = f"/admin?user_email={usuario['email']}"
-            elif rol in ["Agente", "Soporte"]:
-                redirect_url = f"/agente?user_email={usuario['email']}"
-            else:
-                redirect_url = f"/?user_email={usuario['email']}"
             
             return jsonify({
                 "exito": True, 
                 "mensaje": "Bienvenido",
                 "user_id": usuario["email"],
+                "id_usuario": usuario["id_usuario"],  # ID numérico para APIs
                 "nombre": usuario["nombre"],
                 "saldo": float(usuario["saldo_actual"]),
-                "rol": usuario["nombre_rol"],
-                "redirect_url": redirect_url  # <--- NUEVO CAMPO CRÍTICO
+                "rol": usuario["nombre_rol"]
             })
         else:
             return jsonify({"exito": False, "mensaje": "Credenciales incorrectas"}), 401
@@ -214,20 +205,14 @@ def api_guardar_checklist():
         if not email:
             return jsonify({"exito": False, "mensaje": "No logueado"}), 401
 
-        respuestas = data.get("respuestas", {})
-        comentarios = data.get("comentarios", {})
-        
-        # Combinar respuestas y comentarios en un solo objeto
-        datos_auditoria = {
-            "respuestas": respuestas,
-            "comentarios": comentarios
-        }
-        
-        checklist_json = json.dumps(datos_auditoria)
+        checklist = data.get("respuestas")
+        # Convertimos el diccionario a texto para guardar en BD
+        checklist_json = json.dumps(checklist)
         
         id_audit = guardar_auditoria(email, f"Auditoría {data.get('fecha')}", checklist_json)
         
         if id_audit:
+            # URL para descargar el PDF
             pdf_url = f"/api/pdf_auditoria/{id_audit}"
             return jsonify({"exito": True, "mensaje": "Guardado", "pdf_url": pdf_url})
         else:
@@ -252,12 +237,15 @@ def generar_pdf(id_auditoria):
     c = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
-    # --- CONFIGURACIÓN DE FUENTES ---
+    # --- CONFIGURACIÓN DE FUENTES Y COLORES ---
     # Usaremos Helvetica como sustituto estándar de Arial
     font_title = "Helvetica-Bold"
     font_body = "Helvetica"
     size_title = 14
     size_body = 12
+    
+    # Establecer color de texto a negro (opaco)
+    c.setFillColorRGB(0, 0, 0)  # Negro sólido
     
     # --- ENCABEZADO ---
     c.setFont(font_title, size_title)
@@ -273,97 +261,31 @@ def generar_pdf(id_auditoria):
     c.line(50, height - 115, 562, height - 115)
     
     # --- CONTENIDO ---
-    raw_data = datos['datos_auditoria']
+    y = height - 150
+    items = datos['datos_auditoria']
     
-    # Parsear JSON si es string
-    if isinstance(raw_data, str):
+    # Asegurar que items es un diccionario
+    if isinstance(items, str):
         try:
-            raw_data = json.loads(raw_data)
+            items = json.loads(items)
         except Exception as e:
             print(f"Error parseando JSON: {e}")
-            raw_data = {}
+            items = {}
+            
+    if not isinstance(items, dict):
+         items = {}
     
-    # Determinar estructura: nueva (con respuestas/comentarios) o antigua (solo respuestas)
-    if isinstance(raw_data, dict) and 'respuestas' in raw_data:
-        items = raw_data.get('respuestas', {})
-        comentarios = raw_data.get('comentarios', {})
-    else:
-        items = raw_data if isinstance(raw_data, dict) else {}
-        comentarios = {}
-    
-    # --- ANÁLISIS DE RESPUESTAS PARA CLASIFICACIÓN ---
-    total_cumple = 0
-    total_no_cumple = 0
-    total_parcial = 0
-    total_no_aplica = 0
-    total_respuestas = len(items)
-    
-    for pregunta, respuesta in items.items():
-        estado = str(respuesta)
-        if "No Cumple" in estado:
-            total_no_cumple += 1
-        elif "Parcialmente" in estado:
-            total_parcial += 1
-        elif "No Aplica" in estado:
-            total_no_aplica += 1
-        elif "Cumple" in estado:
-            total_cumple += 1
-    
-    # Calcular clasificación
-    total_problemas = total_no_cumple + total_parcial
-    porcentaje_cumple = (total_cumple / total_respuestas * 100) if total_respuestas > 0 else 0
-    
-    # Determinar nivel de clasificación
-    if total_problemas == 0 and porcentaje_cumple >= 90:
-        clasificacion = "✅ BUENA PRÁCTICA"
-        clasificacion_color = (0.2, 0.7, 0.2)  # Verde
-        clasificacion_desc = "Excelente desempeño ambiental. Todas las áreas cumplen con los requisitos."
-    elif total_problemas <= 2:
-        clasificacion = "📋 CUMPLIMIENTO ACEPTABLE"
-        clasificacion_color = (0.4, 0.6, 0.2)  # Verde-amarillo
-        clasificacion_desc = f"Desempeño aceptable con {total_problemas} observaciones menores."
-    elif total_problemas <= 5:
-        clasificacion = "⚠️ NO CONFORMIDAD MENOR"
-        clasificacion_color = (0.9, 0.7, 0.1)  # Amarillo
-        clasificacion_desc = f"Se detectaron {total_problemas} incumplimientos que requieren atención."
-    elif total_problemas <= 10:
-        clasificacion = "🔶 NO CONFORMIDAD MAYOR"
-        clasificacion_color = (0.9, 0.5, 0.1)  # Naranja
-        clasificacion_desc = f"Múltiples incumplimientos ({total_problemas}) que requieren acción correctiva inmediata."
-    else:
-        clasificacion = "🚨 MULTA / SANCIÓN POTENCIAL"
-        clasificacion_color = (0.8, 0.2, 0.2)  # Rojo
-        clasificacion_desc = f"Incumplimiento grave con {total_problemas} no conformidades. Riesgo de sanción."
-    
-    # --- DIBUJAR RESUMEN DE CLASIFICACIÓN ---
-    # Fondo del cuadro de clasificación
-    c.setFillColorRGB(*clasificacion_color, alpha=0.1)
-    c.rect(50, height - 200, 512, 70, fill=True, stroke=False)
-    
-    c.setFillColorRGB(0, 0, 0)
-    c.setFont(font_title, 14)
-    c.drawString(55, height - 145, "RESULTADO DE LA AUDITORÍA:")
-    
-    c.setFillColorRGB(*clasificacion_color)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(260, height - 145, clasificacion)
-    
-    c.setFillColorRGB(0, 0, 0)
-    c.setFont(font_body, 10)
-    c.drawString(55, height - 165, clasificacion_desc)
-    
-    # Estadísticas rápidas
-    c.setFont(font_body, 9)
-    stats_y = height - 185
-    c.drawString(55, stats_y, f"📊 Total: {total_respuestas} items  |  ✅ Cumple: {total_cumple}  |  ❌ No Cumple: {total_no_cumple}  |  ⚠️ Parcial: {total_parcial}  |  ➖ N/A: {total_no_aplica}")
-    
-    c.setLineWidth(1)
-    c.line(50, height - 205, 562, height - 205)
-    
-    y = height - 230
-    
-    c.setFillColorRGB(0, 0, 0)
     c.setFont(font_body, size_body)
+    c.setFillColorRGB(0, 0, 0)  # Asegurar texto negro
+    
+    # Dimensiones de la tabla
+    # Col 1: Pregunta (Ancho variable)
+    # Col 2: CUMPLE (Ancho fijo)
+    # Col 3: X (Casilla)
+    # Col 4: NO CUMPLE (Ancho fijo)
+    # Col 5: X (Casilla)
+    # Col 6: PARCIAL (Ancho fijo)
+    # Col 7: X (Casilla)
     
     # Coordenadas X
     x_start = 50
@@ -377,17 +299,13 @@ def generar_pdf(id_auditoria):
     
     row_height = 30
     
-    # Agrupar preguntas por sección (basado en nombres de sección en comentarios)
-    secciones_con_comentarios = set(comentarios.keys())
-    seccion_actual = None
-    preguntas_seccion_count = 0
-    
     for pregunta, respuesta in items.items():
         # Control de salto de página
-        if y < 80:
+        if y < 50:
             c.showPage()
             y = height - 50
             c.setFont(font_body, size_body)
+            c.setFillColorRGB(0, 0, 0)  # Restablecer color negro en nueva página
         
         # Determinar marcas
         estado = str(respuesta)
@@ -395,37 +313,42 @@ def generar_pdf(id_auditoria):
         mark_no_cumple = "X" if "No Cumple" in estado else ""
         mark_parcial = "X" if "Parcialmente" in estado else ""
         
-        # Dibujar líneas horizontales
+        # Dibujar líneas horizontales (Arriba y Abajo de la fila)
+        c.setStrokeColorRGB(0, 0, 0)  # Líneas negras
         c.setLineWidth(0.5)
-        c.line(x_start, y + row_height, x_end, y + row_height)
-        c.line(x_start, y, x_end, y)
+        c.line(x_start, y + row_height, x_end, y + row_height) # Arriba
+        c.line(x_start, y, x_end, y) # Abajo
         
         # Dibujar líneas verticales
-        c.line(x_start, y, x_start, y + row_height)
-        c.line(x_cumple_label, y, x_cumple_label, y + row_height)
-        c.line(x_cumple_box, y, x_cumple_box, y + row_height)
-        c.line(x_no_cumple_label, y, x_no_cumple_label, y + row_height)
-        c.line(x_no_cumple_box, y, x_no_cumple_box, y + row_height)
-        c.line(x_parcial_label, y, x_parcial_label, y + row_height)
-        c.line(x_parcial_box, y, x_parcial_box, y + row_height)
-        c.line(x_end, y, x_end, y + row_height)
+        c.line(x_start, y, x_start, y + row_height) # Inicio
+        c.line(x_cumple_label, y, x_cumple_label, y + row_height) # Separa Pregunta de Cumple
+        c.line(x_cumple_box, y, x_cumple_box, y + row_height) # Separa Label Cumple de Box
+        c.line(x_no_cumple_label, y, x_no_cumple_label, y + row_height) # Separa Box Cumple de Label No Cumple
+        c.line(x_no_cumple_box, y, x_no_cumple_box, y + row_height) # Separa Label No Cumple de Box
+        c.line(x_parcial_label, y, x_parcial_label, y + row_height) # Separa Box No Cumple de Label Parcial
+        c.line(x_parcial_box, y, x_parcial_box, y + row_height) # Separa Label Parcial de Box
+        c.line(x_end, y, x_end, y + row_height) # Fin
         
+        # Texto Centrado Verticalmente
         text_y = y + 10
         
-        # Pregunta
-        c.setFont(font_body, 10)
+        # Pregunta (Recortar si es muy larga para que quepa en la celda)
+        c.setFillColorRGB(0, 0, 0)  # Texto negro
+        c.setFont(font_body, 10) # Un poco más pequeño para que quepa mejor
         pregunta_corta = (pregunta[:45] + '..') if len(pregunta) > 45 else pregunta
         c.drawString(x_start + 5, text_y, pregunta_corta)
         
         # Labels
         c.setFont("Helvetica-Bold", 8)
         c.drawString(x_cumple_label + 5, text_y, "CUMPLE")
+        
         c.drawString(x_no_cumple_label + 5, text_y + 5, "NO")
         c.drawString(x_no_cumple_label + 5, text_y - 5, "CUMPLE")
+        
         c.drawString(x_parcial_label + 5, text_y + 5, "CUMPLE")
         c.drawString(x_parcial_label + 5, text_y - 5, "PARCIAL")
         
-        # Marcas
+        # Marcas (X)
         c.setFont("Helvetica-Bold", 12)
         if mark_cumple:
             c.drawCentredString(x_cumple_box + 12, text_y, "X")
@@ -435,49 +358,6 @@ def generar_pdf(id_auditoria):
             c.drawCentredString(x_parcial_box + 12, text_y, "X")
             
         y -= row_height
-    
-    # Agregar sección de comentarios al final si hay comentarios
-    if comentarios:
-        y -= 20
-        if y < 150:
-            c.showPage()
-            y = height - 50
-            
-        c.setFont(font_title, size_title)
-        c.drawString(50, y, "OBSERVACIONES Y COMENTARIOS")
-        c.line(50, y - 5, 300, y - 5)
-        y -= 30
-        
-        c.setFont(font_body, 10)
-        for seccion, comentario in comentarios.items():
-            if y < 80:
-                c.showPage()
-                y = height - 50
-                c.setFont(font_body, 10)
-            
-            # Título de la sección
-            c.setFont("Helvetica-Bold", 10)
-            seccion_corta = (seccion[:60] + '..') if len(seccion) > 60 else seccion
-            c.drawString(50, y, f"• {seccion_corta}")
-            y -= 15
-            
-            # Comentario (dividir en líneas si es largo)
-            c.setFont(font_body, 9)
-            palabras = comentario.split()
-            linea = ""
-            for palabra in palabras:
-                if len(linea + " " + palabra) < 90:
-                    linea = linea + " " + palabra if linea else palabra
-                else:
-                    c.drawString(60, y, linea)
-                    y -= 12
-                    linea = palabra
-                    if y < 50:
-                        c.showPage()
-                        y = height - 50
-            if linea:
-                c.drawString(60, y, linea)
-                y -= 20
         
     c.save()
     buffer.seek(0)
@@ -497,18 +377,10 @@ def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Detectar usuario desde App Inventor (parámetro URL) o sesión
-        # Acepta tanto user_id como user_email para compatibilidad
-        user_id = request.args.get('user_id') or request.args.get('user_email') or session.get("user_id")
-        
-        # Verificar que hay usuario válido
-        if not user_id or user_id == "Invitado":
-            return jsonify({"error": "No autorizado", "mensaje": "Debe iniciar sesión para acceder al panel de administración"}), 401
-        
-        # Guardar en sesión
-        session["user_id"] = user_id
-        session.permanent = True
-        
+        # En producción, verificaríamos session.get("rol") == "Administrador"
+        # Por ahora, permitimos acceso para desarrollo o si hay sesión
+        if "user_id" not in session:
+             return render_template("index.html") # Redirigir a login si no hay sesión
         return f(*args, **kwargs)
     return decorated_function
 
@@ -529,19 +401,6 @@ def admin_gestion_usuarios():
     # pero podría tener el menú intermedio si se crean más roles
     return render_template("admin-gestion-usuarios.html")
 
-@app.route("/admin/administradores")
-@admin_required
-def admin_administradores():
-    return render_template("admin-administradores.html")
-
-@app.route("/api/admin/administradores", methods=["GET"])
-@admin_required
-def api_admin_administradores():
-    """Obtener lista de usuarios con rol Administrador"""
-    from db_config import obtener_administradores
-    admins = obtener_administradores()
-    return jsonify({"admins": admins})
-
 @app.route("/admin/juegos")
 @admin_required
 def admin_juegos():
@@ -560,47 +419,7 @@ def admin_promociones():
 @app.route("/admin/configuracion")
 @admin_required
 def admin_configuracion():
-    return render_template("admin-configuracion.html")
-
-# --- API ENDPOINTS PARA GESTIÓN DE IPs ---
-
-@app.route("/api/admin/ips-bloqueadas", methods=["GET"])
-@admin_required
-def api_admin_ips_bloqueadas():
-    """Obtener lista de IPs bloqueadas"""
-    from db_config import obtener_ips_bloqueadas
-    ips = obtener_ips_bloqueadas()
-    return jsonify({"ips": ips})
-
-@app.route("/api/admin/ips-bloqueadas", methods=["POST"])
-@admin_required
-def api_admin_bloquear_ip():
-    """Agregar una IP a la lista de bloqueadas"""
-    from db_config import agregar_ip_bloqueada
-    try:
-        data = request.get_json(force=True)
-        direccion_ip = data.get("direccion_ip", "").strip()
-        motivo = data.get("motivo", "")
-        
-        if not direccion_ip:
-            return jsonify({"exito": False, "mensaje": "La dirección IP es requerida"}), 400
-        
-        # Obtener email del admin que bloquea
-        bloqueado_por = session.get("user_id", "Admin")
-        
-        resultado = agregar_ip_bloqueada(direccion_ip, motivo, bloqueado_por)
-        return jsonify(resultado)
-    except Exception as e:
-        return jsonify({"exito": False, "mensaje": str(e)}), 500
-
-@app.route("/api/admin/ips-bloqueadas/<int:id_ip>", methods=["DELETE"])
-@admin_required
-def api_admin_desbloquear_ip(id_ip):
-    """Eliminar una IP de la lista de bloqueadas"""
-    from db_config import eliminar_ip_bloqueada
-    if eliminar_ip_bloqueada(id_ip):
-        return jsonify({"exito": True, "mensaje": "IP desbloqueada correctamente"})
-    return jsonify({"exito": False, "mensaje": "No se pudo desbloquear la IP"}), 500
+    return render_template("admin-configuracion.html") # Necesita ser creado
 
 # --- API ENDPOINTS PARA ADMIN ---
 
@@ -667,42 +486,78 @@ def api_admin_usuario_detail(id_usuario):
         return jsonify({"success": True, "user": user})
     return jsonify({"success": False, "error": "Usuario no encontrado"}), 404
 
-@app.route("/api/admin/usuarios/<int:id_usuario>/estado", methods=["POST"])
+@app.route("/api/admin/usuarios/<int:id_usuario>", methods=["PUT"])
 @admin_required
-def api_admin_usuario_cambiar_estado(id_usuario):
-    """Cambiar el estado activo/inactivo de un usuario"""
+def api_admin_actualizar_usuario(id_usuario):
+    """Actualizar datos de un usuario"""
+    from db_config import actualizar_usuario_admin
+    try:
+        data = request.get_json(force=True)
+        nombre = data.get('nombre')
+        apellido = data.get('apellido')
+        nueva_password = data.get('password', None)
+        
+        if actualizar_usuario_admin(id_usuario, nombre, apellido, nueva_password):
+            return jsonify({"success": True, "mensaje": "Usuario actualizado correctamente"})
+        return jsonify({"success": False, "error": "No se pudo actualizar el usuario"}), 500
+    except Exception as e:
+        print(f"Error actualizando usuario: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/admin/usuarios/<int:id_usuario>/estado", methods=["PUT"])
+@admin_required
+def api_admin_cambiar_estado(id_usuario):
+    """Cambiar estado activo/inactivo de un usuario"""
     from db_config import cambiar_estado_usuario
     try:
         data = request.get_json(force=True)
-        nuevo_estado = data.get("activo", True)
+        activo = data.get('activo', True)
         
-        resultado = cambiar_estado_usuario(id_usuario, nuevo_estado)
-        if resultado:
-            return jsonify({"success": True, "mensaje": f"Usuario {'activado' if nuevo_estado else 'desactivado'} correctamente"})
-        return jsonify({"success": False, "error": "No se pudo actualizar el estado"}), 500
+        if cambiar_estado_usuario(id_usuario, activo):
+            return jsonify({"success": True, "mensaje": "Estado actualizado correctamente"})
+        return jsonify({"success": False, "error": "No se pudo cambiar el estado"}), 500
     except Exception as e:
         print(f"Error cambiando estado: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/admin/usuarios/<int:id_usuario>", methods=["DELETE"])
+@admin_required
+def api_admin_eliminar_usuario(id_usuario):
+    """Eliminar un usuario"""
+    from db_config import eliminar_usuario
+    try:
+        if eliminar_usuario(id_usuario):
+            return jsonify({"success": True, "mensaje": "Usuario eliminado correctamente"})
+        return jsonify({"success": False, "error": "No se pudo eliminar el usuario"}), 500
+    except Exception as e:
+        print(f"Error eliminando usuario: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/admin/administradores")
+@admin_required
+def admin_administradores():
+    return render_template("admin-administradores.html")
+
+@app.route("/api/admin/administradores", methods=["GET"])
+@admin_required
+def api_admin_administradores():
+    from db_config import obtener_administradores_y_auditores
+    users = obtener_administradores_y_auditores()
+    return jsonify({"success": True, "users": users})
 
 # ==========================================
 # SECCIÓN 5: PANEL DE AGENTE DE SOPORTE
 # ==========================================
 
+# Decorador para verificar que el usuario es Agente de Soporte
 def agente_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Detectar usuario desde App Inventor (parámetro URL) o sesión
-        user_id = request.args.get('user_id') or request.args.get('user_email') or session.get("user_id")
-        
-        # Verificar que hay usuario válido
-        if not user_id or user_id == "Invitado":
-            return jsonify({"error": "No autorizado", "mensaje": "Debe iniciar sesión para acceder al panel de agente"}), 401
-        
-        # Guardar en sesión
-        session["user_id"] = user_id
-        session.permanent = True
-        
+        if "user_id" not in session:
+            return render_template("login.html")
+        if session.get("rol") != "Agente de Soporte":
+            return "Acceso denegado. Solo agentes de soporte pueden acceder a esta sección.", 403
         return f(*args, **kwargs)
     return decorated_function
 

@@ -3,20 +3,19 @@
 
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport sin zoom -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administrador — Royal Crumbs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 
-<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
+<body>
     <div class="rc-container">
 
         <!-- ENCABEZADO -->
         <header class="rc-header">
-            <div></div> <!-- Sin botón de regreso en pantalla principal -->
+            <a href="/home" class="rc-back">‹</a>
             <h1 class="rc-screen-title">Administrador</h1>
-            <div></div>
+            <div></div> <!-- espacio vacío para centrar título -->
         </header>
 
         <!-- SECCIÓN PRINCIPAL -->
@@ -51,7 +50,6 @@
             </div>
         </section>
     </div>
-    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>

@@ -3,207 +3,39 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuración del Sistema — Royal Crumbs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-    <style>
-        .ip-form {
-            margin-bottom: 20px;
-        }
-
-        .ip-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #2a2a2a;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .ip-info {
-            flex: 1;
-        }
-
-        .ip-address {
-            color: #ab925c;
-            font-weight: bold;
-            font-family: monospace;
-            font-size: 1.1em;
-        }
-
-        .ip-meta {
-            color: #888;
-            font-size: 0.85em;
-            margin-top: 5px;
-        }
-
-        .btn-desbloquear {
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9em;
-        }
-
-        .btn-desbloquear:hover {
-            background: #d32f2f;
-        }
-    </style>
 </head>
 
-<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
+<body>
     <div class="rc-container">
 
         <!-- ===== ENCABEZADO ===== -->
         <header class="rc-header">
             <a href="/admin" class="rc-back">‹</a>
-            <h1 class="rc-screen-title">Bloqueo de IPs</h1>
+            <h1 class="rc-screen-title">Configuración del Sistema</h1>
             <div></div>
         </header>
 
-        <!-- ===== FORMULARIO BLOQUEAR IP ===== -->
-        <section class="ip-form">
-            <h2 style="color:#ab925c; margin-bottom:15px;">Bloquear Nueva IP</h2>
-            <form id="formBloquearIP">
-                <label>Dirección IP</label>
-                <input type="text" name="direccion_ip" placeholder="Ej: 192.168.1.100" required
-                    pattern="^(\d{1,3}\.){3}\d{1,3}$" title="Formato: xxx.xxx.xxx.xxx">
+        <!-- ===== SECCIÓN PRINCIPAL ===== -->
+        <section class="system-section">
+            <h2 style="color:#ab925c; margin: 20px 0 10px;">Administración IP</h2>
 
-                <label>Motivo (opcional)</label>
-                <input type="text" name="motivo" placeholder="Ej: Actividad sospechosa, intentos de fraude...">
+            <div class="rc-list-card">
+                <a href="#" class="rc-list-item">
+                    <span>Bloquear IP</span>
+                    <span class="rc-chevron"></span>
+                </a>
 
-                <button type="submit" class="btn-gold" id="btnBloquear">Bloquear IP</button>
-            </form>
-        </section>
-
-        <!-- ===== LISTA DE IPs BLOQUEADAS ===== -->
-        <section class="ip-list">
-            <h2
-                style="color:white; margin-top: 30px; margin-bottom:15px; border-top: 1px solid #444; padding-top: 20px;">
-                IPs Bloqueadas
-            </h2>
-            <div id="ips-container">
-                <p style="text-align: center; color: white;">Cargando...</p>
+                <a href="#" class="rc-list-item">
+                    <span>Lista Blanca IP</span>
+                    <span class="rc-chevron"></span>
+                </a>
             </div>
         </section>
 
     </div>
-
-    <script>
-        const form = document.getElementById('formBloquearIP');
-        const container = document.getElementById('ips-container');
-        const btnBloquear = document.getElementById('btnBloquear');
-
-        // Cargar lista de IPs bloqueadas
-        async function cargarIPs() {
-            container.innerHTML = '<p style="text-align: center; color: white;">Cargando...</p>';
-            try {
-                const res = await fetch('/api/admin/ips-bloqueadas');
-                const data = await res.json();
-
-                if (!data.ips || data.ips.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color: #888;">No hay IPs bloqueadas.</p>';
-                    return;
-                }
-
-                container.innerHTML = '';
-                data.ips.forEach(ip => {
-                    const fecha = new Date(ip.fecha_bloqueo).toLocaleString();
-                    const itemHTML = `
-                        <div class="ip-item" data-id="${ip.id_ip}">
-                            <div class="ip-info">
-                                <div class="ip-address">${ip.direccion_ip}</div>
-                                <div class="ip-meta">
-                                    ${ip.motivo ? `Motivo: ${ip.motivo}<br>` : ''}
-                                    Bloqueada: ${fecha} | Por: ${ip.bloqueado_por || 'Admin'}
-                                </div>
-                            </div>
-                            <button class="btn-desbloquear" onclick="desbloquearIP(${ip.id_ip}, '${ip.direccion_ip}')">
-                                Desbloquear
-                            </button>
-                        </div>
-                    `;
-                    container.insertAdjacentHTML('beforeend', itemHTML);
-                });
-
-            } catch (error) {
-                console.error("Error cargando IPs:", error);
-                container.innerHTML = '<p style="text-align:center; color: red;">Error al cargar la lista.</p>';
-            }
-        }
-
-        // Bloquear nueva IP
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const formData = new FormData(form);
-            const data = {};
-            formData.forEach((value, key) => data[key] = value);
-
-            if (!data.direccion_ip) {
-                alert('Ingrese una dirección IP válida.');
-                return;
-            }
-
-            btnBloquear.disabled = true;
-            btnBloquear.textContent = 'Bloqueando...';
-
-            try {
-                const res = await fetch('/api/admin/ips-bloqueadas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await res.json();
-
-                if (result.exito) {
-                    alert(result.mensaje);
-                    form.reset();
-                    cargarIPs();
-                } else {
-                    alert('Error: ' + result.mensaje);
-                }
-
-            } catch (error) {
-                console.error("Error bloqueando IP:", error);
-                alert('Error de conexión.');
-            }
-
-            btnBloquear.disabled = false;
-            btnBloquear.textContent = 'Bloquear IP';
-        });
-
-        // Desbloquear IP
-        async function desbloquearIP(id, ip) {
-            if (!confirm(`¿Está seguro de desbloquear la IP ${ip}?`)) return;
-
-            try {
-                const res = await fetch(`/api/admin/ips-bloqueadas/${id}`, {
-                    method: 'DELETE'
-                });
-
-                const result = await res.json();
-
-                if (result.exito) {
-                    alert(result.mensaje);
-                    cargarIPs();
-                } else {
-                    alert('Error: ' + result.mensaje);
-                }
-
-            } catch (error) {
-                console.error("Error desbloqueando IP:", error);
-                alert('Error de conexión.');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', cargarIPs);
-    </script>
-    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>

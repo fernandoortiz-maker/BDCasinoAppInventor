@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionar perfil de Usuario — Royal Crumbs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <style>
@@ -29,10 +29,48 @@
             cursor: pointer;
             width: 100%;
         }
+
+        .delete-btn:hover {
+            background: #d32f2f;
+        }
+
+        .btn-gold:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .status-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #444;
+            background: #1a1a1a;
+            color: #888;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .status-btn.active {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+
+        .status-btn.blocked {
+            background: #f44336;
+            color: white;
+            border-color: #f44336;
+        }
     </style>
 </head>
 
-<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
+<body>
     <div class="rc-container">
 
         <!-- ===== ENCABEZADO ===== -->
@@ -45,7 +83,7 @@
         <div id="loading" style="text-align:center; margin-top:50px;">Cargando...</div>
 
         <!-- ===== FORMULARIO ===== -->
-        <form class="user-form" id="userForm" style="display:none;">
+        <form class="user-form" id="userForm" style="display:none;" onsubmit="guardarCambios(event)">
             <label>Email (ID)</label>
             <input type="email" id="email" readonly style="background:#111; color:#888;">
 
@@ -53,10 +91,13 @@
             <input type="text" id="rol" readonly style="background:#111; color:#888;">
 
             <label>Nombre</label>
-            <input type="text" id="nombre" readonly>
+            <input type="text" id="nombre" required>
 
             <label>Apellido</label>
-            <input type="text" id="apellido" readonly>
+            <input type="text" id="apellido" required>
+
+            <label>Nueva Contraseña (dejar vacío para no cambiar)</label>
+            <input type="password" id="password" placeholder="••••••••">
 
             <label>Saldo Actual</label>
             <input type="text" id="saldo" readonly style="color:#ab925c; font-weight:bold;">
@@ -65,17 +106,17 @@
             <section class="account-config">
                 <h2 style="color:#fff; margin-bottom:15px;">Estado de Cuenta</h2>
                 <div class="status-buttons">
-                    <button type="button" class="status-btn" id="btn-activo">Activa</button>
-                    <button type="button" class="status-btn" id="btn-inactivo">Inactiva</button>
+                    <button type="button" class="status-btn" id="btn-activo"
+                        onclick="cambiarEstado(true)">Activa</button>
+                    <button type="button" class="status-btn" id="btn-inactivo"
+                        onclick="cambiarEstado(false)">Inactiva</button>
                 </div>
             </section>
 
             <!-- ===== BOTONES ===== -->
             <div class="action-buttons">
-                <button type="button" class="btn-gold" onclick="alert('Funcionalidad de edición en desarrollo')">Guardar
-                    Cambios</button>
-                <button type="button" class="delete-btn"
-                    onclick="alert('Funcionalidad de eliminar en desarrollo')">Eliminar Cuenta</button>
+                <button type="submit" class="btn-gold">Guardar Cambios</button>
+                <button type="button" class="delete-btn" onclick="eliminarUsuario()">Eliminar Cuenta</button>
             </div>
         </form>
 
@@ -84,7 +125,8 @@
     <script>
         const params = new URLSearchParams(window.location.search);
         const userId = params.get('id');
-        let currentUserActive = true; // Estado actual del usuario
+        let currentUser = null;
+        let estadoActual = true;
 
         async function cargarUsuario() {
             if (!userId) {
@@ -98,16 +140,15 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    const user = data.user;
-                    document.getElementById('email').value = user.email;
-                    document.getElementById('rol').value = user.rol;
-                    document.getElementById('nombre').value = user.nombre;
-                    document.getElementById('apellido').value = user.apellido;
-                    document.getElementById('saldo').value = `$${user.saldo_actual || 0.00}`;
+                    currentUser = data.user;
+                    document.getElementById('email').value = currentUser.email;
+                    document.getElementById('rol').value = currentUser.rol;
+                    document.getElementById('nombre').value = currentUser.nombre;
+                    document.getElementById('apellido').value = currentUser.apellido;
+                    document.getElementById('saldo').value = `$${currentUser.saldo_actual || 0.00}`;
 
-                    // Guardar estado actual
-                    currentUserActive = user.activo;
-                    actualizarBotonesEstado(user.activo);
+                    estadoActual = currentUser.activo;
+                    actualizarBotonesEstado();
 
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('userForm').style.display = 'block';
@@ -121,60 +162,107 @@
             }
         }
 
-        // Actualizar apariencia de los botones según el estado
-        function actualizarBotonesEstado(activo) {
+        function actualizarBotonesEstado() {
             const btnActivo = document.getElementById('btn-activo');
             const btnInactivo = document.getElementById('btn-inactivo');
 
-            // Limpiar clases
             btnActivo.classList.remove('active');
             btnInactivo.classList.remove('blocked');
 
-            if (activo) {
+            if (estadoActual) {
                 btnActivo.classList.add('active');
             } else {
                 btnInactivo.classList.add('blocked');
             }
         }
 
-        // Función para cambiar el estado del usuario
-        async function cambiarEstado(nuevoEstado) {
-            if (currentUserActive === nuevoEstado) return; // No hay cambio
-
-            const accion = nuevoEstado ? 'activar' : 'desactivar';
-            const confirmar = confirm(`¿Está seguro de ${accion} esta cuenta de usuario?`);
-
-            if (!confirmar) return;
-
+        async function cambiarEstado(activo) {
             try {
                 const res = await fetch(`/api/admin/usuarios/${userId}/estado`, {
-                    method: 'POST',
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ activo: nuevoEstado })
+                    body: JSON.stringify({ activo })
                 });
 
                 const data = await res.json();
 
                 if (data.success) {
-                    currentUserActive = nuevoEstado;
-                    actualizarBotonesEstado(nuevoEstado);
-                    alert(data.mensaje);
+                    estadoActual = activo;
+                    actualizarBotonesEstado();
+                    alert(`Usuario ${activo ? 'activado' : 'desactivado'} correctamente`);
                 } else {
-                    alert('Error: ' + (data.error || 'No se pudo cambiar el estado'));
+                    alert('Error al cambiar el estado: ' + (data.error || 'Error desconocido'));
                 }
             } catch (e) {
                 console.error(e);
-                alert('Error de conexión al cambiar el estado');
+                alert('Error al cambiar el estado');
             }
         }
 
-        // Event listeners para los botones de estado
-        document.getElementById('btn-activo').addEventListener('click', () => cambiarEstado(true));
-        document.getElementById('btn-inactivo').addEventListener('click', () => cambiarEstado(false));
+        async function guardarCambios(event) {
+            event.preventDefault();
+
+            const nombre = document.getElementById('nombre').value;
+            const apellido = document.getElementById('apellido').value;
+            const password = document.getElementById('password').value;
+
+            const payload = { nombre, apellido };
+            if (password && password.length > 0) {
+                payload.password = password;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/usuarios/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('Usuario actualizado correctamente');
+                    document.getElementById('password').value = '';
+                    cargarUsuario(); // Recargar datos
+                } else {
+                    alert('Error al actualizar: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error al guardar cambios');
+            }
+        }
+
+        async function eliminarUsuario() {
+            if (!confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')) {
+                return;
+            }
+
+            if (!confirm('CONFIRMACIÓN FINAL: ¿Realmente deseas eliminar este usuario?')) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/usuarios/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('Usuario eliminado correctamente');
+                    window.location.href = '/admin/usuarios';
+                } else {
+                    alert('Error al eliminar: ' + (data.error || 'Error desconocido'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error al eliminar usuario');
+            }
+        }
 
         document.addEventListener("DOMContentLoaded", cargarUsuario);
     </script>
-    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>

@@ -3,12 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tickets — Agente Soporte</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/agente-tickets.css') }}">
 </head>
 
-<body oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
+<body>
     <div class="rc-container">
 
         <!-- ENCABEZADO -->
@@ -44,7 +44,7 @@
 
         <!-- LISTA DE TICKETS -->
         <section class="tickets-list" id="tickets-container">
-            <div class="no-tickets">⏳ Cargando tickets...</div>
+            <div class="no-tickets">Cargando tickets...</div>
         </section>
 
     </div>
@@ -53,9 +53,6 @@
         const idAgente = parseInt(localStorage.getItem('userId'));
 
         async function cargarTickets(estado = '', asignado = '') {
-            const container = document.getElementById('tickets-container');
-            container.innerHTML = '<div class="no-tickets">⏳ Cargando tickets...</div>';
-
             try {
                 let url = '/api/agente/tickets?';
                 if (estado) url += `estado=${estado}&`;
@@ -70,7 +67,8 @@
 
             } catch (error) {
                 console.error('Error:', error);
-                container.innerHTML = '<div class="no-tickets" style="color:#f44336;">❌ Error al cargar los tickets</div>';
+                document.getElementById('tickets-container').innerHTML =
+                    '<div class="no-tickets">Error al cargar los tickets</div>';
             }
         }
 
@@ -78,7 +76,7 @@
             const container = document.getElementById('tickets-container');
 
             if (!tickets || tickets.length === 0) {
-                container.innerHTML = '<div class="no-tickets">📭 No hay tickets disponibles</div>';
+                container.innerHTML = '<div class="no-tickets">No se encontraron tickets</div>';
                 return;
             }
 
@@ -86,16 +84,16 @@
         <div class="ticket-card" onclick="verTicket(${ticket.id_ticket})">
           <div class="ticket-header">
             <span class="ticket-id">Ticket #${ticket.id_ticket}</span>
-            <span class="ticket-estado estado-${(ticket.estado || '').toLowerCase().replace(' ', '-')}">${ticket.estado}</span>
+            <span class="ticket-estado estado-${ticket.estado.toLowerCase()}">${ticket.estado}</span>
           </div>
           <div class="ticket-info">
             <h3>${ticket.asunto}</h3>
             <div class="ticket-meta">
-              <span>👤 ${ticket.nombre_usuario || 'Usuario'}</span>
-              <span>📅 ${ticket.fecha_creacion ? new Date(ticket.fecha_creacion).toLocaleDateString() : 'N/A'}</span>
-              ${ticket.nombre_agente ? `<span>👨‍💼 ${ticket.nombre_agente}</span>` : '<span style="color:#ab925c;">⚠️ Sin asignar</span>'}
+              <span>👤 ${ticket.nombre_usuario}</span>
+              <span>📅 ${new Date(ticket.fecha_creacion).toLocaleDateString()}</span>
+              ${ticket.nombre_agente ? `<span>👨‍💼 ${ticket.nombre_agente}</span>` : ''}
             </div>
-            <p class="ticket-mensaje">${ticket.mensaje || ''}</p>
+            <p class="ticket-mensaje">${ticket.mensaje}</p>
           </div>
         </div>
       `).join('');
@@ -112,12 +110,11 @@
         }
 
         // Cargar al inicio
-        document.addEventListener('DOMContentLoaded', cargarTickets);
+        cargarTickets();
 
-        // Actualizar cada 30 segundos
-        setInterval(() => aplicarFiltros(), 30000);
+        // Actualizar cada 15 segundos
+        setInterval(() => aplicarFiltros(), 15000);
     </script>
-    <script src="{{ url_for('static', filename='js/security.js') }}"></script>
 </body>
 
 </html>

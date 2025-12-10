@@ -226,27 +226,6 @@ def obtener_todos_usuarios():
         print(f"Error fetching users: {e}")
         return []
 
-def obtener_administradores():
-    """Obtener usuarios con rol de Administrador"""
-    conn = get_db_connection()
-    if not conn: return []
-    try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        sql = """
-            SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.activo, r.nombre as rol
-            FROM Usuario u
-            JOIN Rol r ON u.id_rol = r.id_rol
-            WHERE r.nombre = 'Administrador'
-            ORDER BY u.id_usuario DESC
-        """
-        cursor.execute(sql)
-        admins = cursor.fetchall()
-        conn.close()
-        return [dict(row) for row in admins]
-    except Exception as e:
-        print(f"Error fetching admins: {e}")
-        return []
-
 def obtener_usuario_por_id(id_usuario):
     conn = get_db_connection()
     if not conn: return None
@@ -266,23 +245,6 @@ def obtener_usuario_por_id(id_usuario):
     except Exception as e:
         print(f"Error fetching user detail: {e}")
         return None
-
-def cambiar_estado_usuario(id_usuario, activo):
-    """Cambiar el estado activo/inactivo de un usuario"""
-    conn = get_db_connection()
-    if not conn: return False
-    try:
-        cursor = conn.cursor()
-        sql = "UPDATE Usuario SET activo = %s WHERE id_usuario = %s"
-        cursor.execute(sql, (activo, id_usuario))
-        conn.commit()
-        rows_affected = cursor.rowcount
-        conn.close()
-        return rows_affected > 0
-    except Exception as e:
-        print(f"Error cambiando estado de usuario: {e}")
-        if conn: conn.rollback()
-        return False
 
 def obtener_juegos():
     conn = get_db_connection()
@@ -398,102 +360,80 @@ def obtener_metricas():
         print(f"Error metrics: {e}")
         return {"total_users": 0, "active_users": 0, "total_deposits": 0, "total_withdrawals": 0}
 
-# --- GESTIÓN DE IPs BLOQUEADAS ---
-
-def inicializar_tabla_ips():
-    """Crear tabla de IPs bloqueadas si no existe"""
+def actualizar_usuario_admin(id_usuario, nombre, apellido, nueva_password=None):
+    """Actualizar datos de un usuario desde el panel de admin"""
     conn = get_db_connection()
     if not conn: return False
     try:
         cursor = conn.cursor()
-        sql = """
-            CREATE TABLE IF NOT EXISTS IP_Bloqueada (
-                id_ip SERIAL PRIMARY KEY,
-                direccion_ip VARCHAR(45) UNIQUE NOT NULL,
-                motivo TEXT,
-                fecha_bloqueo TIMESTAMP DEFAULT NOW(),
-                bloqueado_por VARCHAR(100)
-            )
-        """
-        cursor.execute(sql)
+        if nueva_password and len(nueva_password) > 0:
+            pass_hash = pwd_context.hash(nueva_password)
+            sql = "UPDATE Usuario SET nombre = %s, apellido = %s, password_hash = %s WHERE id_usuario = %s"
+            cursor.execute(sql, (nombre, apellido, pass_hash, id_usuario))
+        else:
+            sql = "UPDATE Usuario SET nombre = %s, apellido = %s WHERE id_usuario = %s"
+            cursor.execute(sql, (nombre, apellido, id_usuario))
         conn.commit()
         conn.close()
         return True
     except Exception as e:
-        print(f"Error creando tabla IP_Bloqueada: {e}")
+        print(f"Error actualizando usuario: {e}")
+        if conn: conn.rollback()
         return False
 
-def obtener_ips_bloqueadas():
-    """Obtener lista de IPs bloqueadas"""
-    # Asegurar que la tabla existe
-    inicializar_tabla_ips()
-    
+def cambiar_estado_usuario(id_usuario, activo):
+    """Activar o desactivar un usuario"""
+    conn = get_db_connection()
+    if not conn: return False
+    try:
+        cursor = conn.cursor()
+        sql = "UPDATE Usuario SET activo = %s WHERE id_usuario = %s"
+        cursor.execute(sql, (activo, id_usuario))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error cambiando estado: {e}")
+        if conn: conn.rollback()
+        return False
+
+def eliminar_usuario(id_usuario):
+    """Eliminar un usuario (solo si no tiene dependencias críticas)"""
+    conn = get_db_connection()
+    if not conn: return False
+    try:
+        cursor = conn.cursor()
+        # Primero eliminar saldo (CASCADE debería hacerlo automáticamente)
+        sql = "DELETE FROM Usuario WHERE id_usuario = %s"
+        cursor.execute(sql, (id_usuario,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error eliminando usuario: {e}")
+        if conn: conn.rollback()
+        return False
+
+def obtener_administradores_y_auditores():
+    """Obtener lista de administradores y auditores"""
     conn = get_db_connection()
     if not conn: return []
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        sql = "SELECT * FROM IP_Bloqueada ORDER BY fecha_bloqueo DESC"
-        cursor.execute(sql)
-        ips = cursor.fetchall()
-        conn.close()
-        return [dict(row) for row in ips]
-    except Exception as e:
-        print(f"Error obteniendo IPs bloqueadas: {e}")
-        return []
-
-def agregar_ip_bloqueada(direccion_ip, motivo="", bloqueado_por="Admin"):
-    """Agregar una IP a la lista de bloqueadas"""
-    # Asegurar que la tabla existe
-    inicializar_tabla_ips()
-    
-    conn = get_db_connection()
-    if not conn: return {"exito": False, "mensaje": "Error de conexión"}
-    try:
-        cursor = conn.cursor()
         sql = """
-            INSERT INTO IP_Bloqueada (direccion_ip, motivo, bloqueado_por)
-            VALUES (%s, %s, %s)
+            SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.activo, r.nombre as rol
+            FROM Usuario u
+            JOIN Rol r ON u.id_rol = r.id_rol
+            WHERE r.nombre IN ('Administrador', 'Auditor', 'Agente de Soporte')
+            ORDER BY r.nombre, u.id_usuario DESC
         """
-        cursor.execute(sql, (direccion_ip, motivo, bloqueado_por))
-        conn.commit()
+        cursor.execute(sql)
+        users = cursor.fetchall()
         conn.close()
-        return {"exito": True, "mensaje": f"IP {direccion_ip} bloqueada correctamente"}
+        return [dict(row) for row in users]
     except Exception as e:
-        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
-            return {"exito": False, "mensaje": "Esta IP ya está bloqueada"}
-        print(f"Error bloqueando IP: {e}")
-        return {"exito": False, "mensaje": str(e)}
-
-def eliminar_ip_bloqueada(id_ip):
-    """Eliminar una IP de la lista de bloqueadas"""
-    conn = get_db_connection()
-    if not conn: return False
-    try:
-        cursor = conn.cursor()
-        sql = "DELETE FROM IP_Bloqueada WHERE id_ip = %s"
-        cursor.execute(sql, (id_ip,))
-        conn.commit()
-        rows = cursor.rowcount
-        conn.close()
-        return rows > 0
-    except Exception as e:
-        print(f"Error eliminando IP: {e}")
-        return False
-
-def verificar_ip_bloqueada(direccion_ip):
-    """Verificar si una IP está bloqueada"""
-    conn = get_db_connection()
-    if not conn: return False
-    try:
-        cursor = conn.cursor()
-        sql = "SELECT 1 FROM IP_Bloqueada WHERE direccion_ip = %s"
-        cursor.execute(sql, (direccion_ip,))
-        result = cursor.fetchone()
-        conn.close()
-        return result is not None
-    except Exception as e:
-        print(f"Error verificando IP: {e}")
-        return False
+        print(f"Error fetching admins/auditors: {e}")
+        return []
 
 # ==========================================
 # SECCIÓN 5: FUNCIONES PANEL DE AGENTE DE SOPORTE
@@ -642,21 +582,20 @@ def obtener_tickets_agente(id_agente):
         print(f"Error obteniendo tickets del agente: {e}")
         return []
 
-# --- FUNCIONES DE CHAT EN VIVO ---
+# --- CHATS (Tabla: Chat y Mensaje_Chat) ---
 
 def obtener_chats_esperando():
-    """Obtener chats que están esperando ser atendidos (sin agente asignado)"""
+    """Obtener chats en espera de ser asignados a un agente"""
     conn = get_db_connection()
     if not conn: return []
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         sql = """
-            SELECT c.id_chat, c.estado, c.fecha_inicio,
-                   u.nombre || ' ' || u.apellido as nombre_usuario,
-                   u.email
+            SELECT c.id_chat, c.fecha_inicio, c.estado,
+                   u.nombre || ' ' || u.apellido as nombre_usuario, u.email
             FROM Chat c
             JOIN Usuario u ON c.id_jugador = u.id_usuario
-            WHERE c.estado = 'Esperando' AND c.id_agente IS NULL
+            WHERE c.estado = 'Esperando'
             ORDER BY c.fecha_inicio ASC
         """
         cursor.execute(sql)
@@ -674,9 +613,8 @@ def obtener_chats_agente(id_agente):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         sql = """
-            SELECT c.id_chat, c.estado, c.fecha_inicio, c.fecha_asignacion,
-                   u.nombre || ' ' || u.apellido as nombre_usuario,
-                   u.email
+            SELECT c.id_chat, c.fecha_inicio, c.fecha_asignacion, c.estado,
+                   u.nombre || ' ' || u.apellido as nombre_usuario, u.email
             FROM Chat c
             JOIN Usuario u ON c.id_jugador = u.id_usuario
             WHERE c.id_agente = %s AND c.estado = 'Activo'
@@ -697,14 +635,13 @@ def obtener_mensajes_chat(id_chat):
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Obtener info del chat
+        # Obtener información del chat
         sql_chat = """
-            SELECT c.id_chat, c.estado, c.fecha_inicio, c.fecha_asignacion, c.fecha_cierre,
-                   j.nombre || ' ' || j.apellido as nombre_jugador,
-                   j.email as email_jugador,
+            SELECT c.id_chat, c.fecha_inicio, c.fecha_asignacion, c.fecha_cierre, c.estado,
+                   u.nombre || ' ' || u.apellido as nombre_usuario, u.email as email_usuario,
                    a.nombre || ' ' || a.apellido as nombre_agente
             FROM Chat c
-            JOIN Usuario j ON c.id_jugador = j.id_usuario
+            JOIN Usuario u ON c.id_jugador = u.id_usuario
             LEFT JOIN Usuario a ON c.id_agente = a.id_usuario
             WHERE c.id_chat = %s
         """
@@ -715,9 +652,9 @@ def obtener_mensajes_chat(id_chat):
             conn.close()
             return {'chat': None, 'mensajes': []}
         
-        # Obtener mensajes
+        # Obtener mensajes del chat
         sql_mensajes = """
-            SELECT m.id_mensaje, m.mensaje, m.es_agente, m.fecha_mensaje, m.leido,
+            SELECT m.id_mensaje, m.mensaje, m.fecha_mensaje, m.es_agente, m.leido,
                    u.nombre || ' ' || u.apellido as nombre_usuario
             FROM Mensaje_Chat m
             JOIN Usuario u ON m.id_usuario = u.id_usuario
@@ -730,14 +667,14 @@ def obtener_mensajes_chat(id_chat):
         conn.close()
         return {
             'chat': dict(chat),
-            'mensajes': [dict(m) for m in mensajes]
+            'mensajes': [dict(row) for row in mensajes]
         }
     except Exception as e:
         print(f"Error obteniendo mensajes del chat: {e}")
         return {'chat': None, 'mensajes': []}
 
 def tomar_chat(id_chat, id_agente):
-    """Asignar un chat a un agente (cambiar estado de Esperando a Activo)"""
+    """Asignar un chat a un agente y cambiar su estado a Activo"""
     conn = get_db_connection()
     if not conn: return False
     try:
@@ -749,11 +686,11 @@ def tomar_chat(id_chat, id_agente):
         """
         cursor.execute(sql, (id_agente, id_chat))
         conn.commit()
-        rows = cursor.rowcount
         conn.close()
-        return rows > 0
+        return True
     except Exception as e:
         print(f"Error tomando chat: {e}")
+        if conn: conn.rollback()
         return False
 
 def enviar_mensaje_chat(id_chat, id_usuario, mensaje, es_agente=True):
@@ -763,68 +700,33 @@ def enviar_mensaje_chat(id_chat, id_usuario, mensaje, es_agente=True):
     try:
         cursor = conn.cursor()
         sql = """
-            INSERT INTO Mensaje_Chat (id_chat, id_usuario, es_agente, mensaje)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO Mensaje_Chat (id_chat, id_usuario, mensaje, es_agente, fecha_mensaje, leido)
+            VALUES (%s, %s, %s, %s, NOW(), false)
         """
-        cursor.execute(sql, (id_chat, id_usuario, es_agente, mensaje))
+        cursor.execute(sql, (id_chat, id_usuario, mensaje, es_agente))
         conn.commit()
         conn.close()
         return True
     except Exception as e:
         print(f"Error enviando mensaje: {e}")
+        if conn: conn.rollback()
         return False
 
 def cerrar_chat(id_chat):
-    """Cerrar un chat (cambiar estado a Cerrado)"""
+    """Cerrar un chat"""
     conn = get_db_connection()
     if not conn: return False
     try:
         cursor = conn.cursor()
-        sql = """
-            UPDATE Chat 
-            SET estado = 'Cerrado', fecha_cierre = NOW()
-            WHERE id_chat = %s AND estado = 'Activo'
-        """
+        sql = "UPDATE Chat SET estado = 'Cerrado', fecha_cierre = NOW() WHERE id_chat = %s"
         cursor.execute(sql, (id_chat,))
         conn.commit()
-        rows = cursor.rowcount
         conn.close()
-        return rows > 0
+        return True
     except Exception as e:
         print(f"Error cerrando chat: {e}")
-        return False
-
-def crear_chat(id_jugador, mensaje_inicial=None):
-    """Crear un nuevo chat (cuando un jugador inicia una conversación)"""
-    conn = get_db_connection()
-    if not conn: return None
-    try:
-        cursor = conn.cursor()
-        
-        # Crear el chat
-        sql_chat = """
-            INSERT INTO Chat (id_jugador, estado)
-            VALUES (%s, 'Esperando')
-            RETURNING id_chat
-        """
-        cursor.execute(sql_chat, (id_jugador,))
-        id_chat = cursor.fetchone()[0]
-        
-        # Si hay mensaje inicial, insertarlo
-        if mensaje_inicial:
-            sql_msg = """
-                INSERT INTO Mensaje_Chat (id_chat, id_usuario, es_agente, mensaje)
-                VALUES (%s, %s, FALSE, %s)
-            """
-            cursor.execute(sql_msg, (id_chat, id_jugador, mensaje_inicial))
-        
-        conn.commit()
-        conn.close()
-        return id_chat
-    except Exception as e:
-        print(f"Error creando chat: {e}")
         if conn: conn.rollback()
-        return None
+        return False
 
 # --- DASHBOARD ---
 
@@ -850,21 +752,30 @@ def obtener_dashboard_agente(id_agente):
         cursor.execute("SELECT COUNT(*) FROM Soporte WHERE id_agente = %s AND estado != 'Cerrado'", (id_agente,))
         mis_tickets = cursor.fetchone()[0]
         
-        # Chats en espera (usando la nueva tabla Chat)
-        cursor.execute("SELECT COUNT(*) FROM Chat WHERE id_agente IS NULL AND estado = 'Esperando'")
+        # Chats en espera
+        cursor.execute("SELECT COUNT(*) FROM Chat WHERE estado = 'Esperando'")
         chats_esperando = cursor.fetchone()[0]
         
         # Mis chats activos
         cursor.execute("SELECT COUNT(*) FROM Chat WHERE id_agente = %s AND estado = 'Activo'", (id_agente,))
         mis_chats = cursor.fetchone()[0]
         
-        # Cerrados hoy
+        # Cerrados hoy (tickets y chats)
         cursor.execute("""
             SELECT COUNT(*) FROM Soporte 
             WHERE id_agente = %s AND estado = 'Cerrado' 
             AND DATE(fecha_cierre) = CURRENT_DATE
         """, (id_agente,))
-        cerrados_hoy = cursor.fetchone()[0]
+        tickets_cerrados_hoy = cursor.fetchone()[0]
+        
+        cursor.execute("""
+            SELECT COUNT(*) FROM Chat 
+            WHERE id_agente = %s AND estado = 'Cerrado' 
+            AND DATE(fecha_cierre) = CURRENT_DATE
+        """, (id_agente,))
+        chats_cerrados_hoy = cursor.fetchone()[0]
+        
+        cerrados_hoy = tickets_cerrados_hoy + chats_cerrados_hoy
         
         conn.close()
         return {
