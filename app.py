@@ -608,8 +608,23 @@ def panel_agente_wrapper():
     # Ahora verificar acceso de agente
     @agente_required
     def panel_agente():
-        print(f"📋 Accediendo a panel_agente - Usuario: {session.get('user_id')}")
-        return render_template("agente.html")
+        email = session.get('user_id')
+        print(f"📋 Accediendo a panel_agente - Usuario: {email}")
+        
+        # Obtener datos completos para hidratar localStorage
+        user_data = {}
+        try:
+            from db_config import obtener_perfil
+            perfil = obtener_perfil(email)
+            if perfil:
+                user_data = perfil
+                # Asegurar que id_usuario esté presente (a veces viene como id)
+                if 'id_usuario' not in user_data and 'id' in user_data:
+                    user_data['id_usuario'] = user_data['id']
+        except Exception as e:
+            print(f"Error obteniendo perfil agente: {e}")
+
+        return render_template("agente.html", user=user_data)
     
     return panel_agente()
 
