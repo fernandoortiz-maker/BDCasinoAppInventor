@@ -661,23 +661,130 @@ def agente_mis_chats():
 @app.route("/api/agente/dashboard/<int:id_agente>", methods=["GET"])
 def api_agente_dashboard(id_agente):
     """Obtener métricas del dashboard para un agente"""
-    from db_config import obtener_dashboard_agente
     try:
-        metricas = obtener_dashboard_agente(id_agente)
-        return jsonify(metricas)
+        from db_config import get_db_connection
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Error de conexión"}), 500
+        
+        cursor = conn.cursor()
+        
+        # Tickets pendientes (Abiertos sin asignar)
+        cursor.execute("""
+            SELECT COUNT(*) FROM Soporte 
+            WHERE estado = 'Abierto' AND id_agente IS NULL
+        """)
+        tickets_pendientes = cursor.fetchone()[0]
+        
+        # Mis tickets (asignados a este agente)
+        cursor.execute("""
+            SELECT COUNT(*) FROM Soporte 
+            WHERE id_agente = %s AND estado != 'Cerrado'
+        """, (id_agente,))
+        mis_tickets = cursor.fetchone()[0]
+        
+        # Chats en espera
+        cursor.execute("""
+            SELECT COUNT(*) FROM Chat 
+            WHERE estado = 'Esperando'
+        """)
+        chats_esperando = cursor.fetchone()[0]
+        
+        # Mis chats activos
+        cursor.execute("""
+            SELECT COUNT(*) FROM Chat 
+            WHERE id_agente = %s AND estado = 'Activo'
+        """, (id_agente,))
+        mis_chats = cursor.fetchone()[0]
+        
+        # Cerrados hoy
+        cursor.execute("""
+            SELECT COUNT(*) FROM Soporte 
+            WHERE id_agente = %s 
+              AND estado = 'Cerrado' 
+              AND DATE(fecha_cierre) = CURRENT_DATE
+        """, (id_agente,))
+        cerrados_hoy = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return jsonify({
+            "tickets_pendientes": tickets_pendientes,
+            "mis_tickets": mis_tickets,
+            "chats_esperando": chats_esperando,
+            "mis_chats": mis_chats,
+            "cerrados_hoy": cerrados_hoy
+        })
     except Exception as e:
         print(f"Error dashboard agente: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 # Tickets
 @app.route("/api/agente/tickets", methods=["GET"])
 def api_agente_tickets():
     """Obtener todos los tickets con filtros opcionales"""
-    from db_config import obtener_tickets
     try:
+        from db_config import get_db_connection
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"tickets": []}), 500
+        
+        cursor = conn.cursor()
         estado = request.args.get('estado', None)
         asignado = request.args.get('asignado', None)
-        tickets = obtener_tickets(estado, asignado)
+        
+        query = """
+            SELECT 
+                s.id_ticket,
+                s.asunto,
+                s.mensaje,
+                s.estado,
+                s.fecha_creacion,
+                uj.nombre || ' ' || uj.apellido as nombre_usuario,
+                ua.nombre || ' ' || ua.apellido as nombre_agente
+            FROM Soporte s
+            JOIN Usuario uj ON s.id_jugador = uj.id_usuario
+            LEFT JOIN Usuario ua ON s.id_agente = ua.id_usuario
+            WHERE 1=1
+        """
+        
+        params = []
+        if estado:
+            query += " AND s.estado = %s"
+            params.append(estado)
+        
+        if asignado == 'si':
+            query += " AND s.id_agente IS NOT NULL"
+        elif asignado == 'no':
+            query += " AND s.id_agente IS NULL"
+        
+        query += " ORDER BY s.fecha_creacion DESC"
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        tickets = []
+        for row in rows:
+            tickets.append({
+                "id_ticket": row[0],
+                "asunto": row[1],
+                "mensaje": row[2],
+                "estado": row[3],
+                "fecha_creacion": row[4].isoformat() if row[4] else None,
+                "nombre_usuario": row[5],
+                "nombre_agente": row[6] if row[6] else None
+            })
+        
+        conn.close()
+        return jsonify({"tickets": tickets})
+        
+    except Exception as e:
+        print(f"Error obtener tickets: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"tickets": []}), 500
         return jsonify({"tickets": tickets})
     except Exception as e:
         print(f"Error obteniendo tickets: {e}")

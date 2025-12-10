@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agente de Soporte — Royal Crumbs</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/agente.css') }}">
 </head>
+
 <body>
   <div class="rc-container">
-    
+
     <!-- ENCABEZADO -->
     <header class="rc-header">
       <a href="/home" class="rc-back">‹</a>
@@ -48,5 +50,24 @@
       </div>
     </section>
   </div>
+
+  <script>
+    // Guardar ID del usuario en localStorage para que otras páginas lo usen
+    const userEmail = "{{ session.get('user_id', '') }}";
+    if (userEmail) {
+      // Obtener el ID numérico del usuario
+      fetch('/api/user_info?email=' + encodeURIComponent(userEmail))
+        .then(r => r.json())
+        .then(data => {
+          if (data.id_usuario) {
+            localStorage.setItem('userId', data.id_usuario);
+            localStorage.setItem('userEmail', userEmail);
+            console.log('✅ Usuario guardado:', data.id_usuario);
+          }
+        })
+        .catch(err => console.error('❌ Error guardando usuario:', err));
+    }
+  </script>
 </body>
+
 </html>
