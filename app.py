@@ -571,11 +571,47 @@ def agente_required(f):
 # --- RUTAS HTML ---
 
 @app.route("/agente")
-@agente_required
-def panel_agente():
-    """Menú principal del panel de agente"""
-    print(f"📋 Accediendo a panel_agente - Usuario: {session.get('user_id')}")
-    return render_template("agente.html")
+def panel_agente_wrapper():
+    """Wrapper para manejar auto-login de App Inventor"""
+    user_email_param = request.args.get('user_email')
+    
+    # Auto-login si viene desde App Inventor
+    if user_email_param:
+        print(f"🔄 Intento de auto-login: {user_email_param}")
+        print(f"   Sesión actual: {dict(session)}")
+        
+        # Solo hacer auto-login si no hay sesión o es diferente usuario
+        if not session.get('user_id') or session.get('user_id') != user_email_param:
+            from db_config import get_db_connection
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT u.id_usuario, u.nombre, u.apellido, u.email, r.nombre as nombre_rol
+                    FROM Usuario u
+                    JOIN Rol r ON u.id_rol = r.id_rol
+                    WHERE u.email = %s AND u.activo = true
+                """, (user_email_param,))
+                
+                usuario = cursor.fetchone()
+                conn.close()
+                
+                if usuario:
+                    session.clear()
+                    session.permanent = True
+                    session["user_id"] = usuario[3]
+                    session["rol"] = usuario[4]
+                    print(f"✅ Auto-login exitoso: {session['user_id']} | Rol: {session['rol']}")
+                else:
+                    print(f"❌ Usuario no encontrado: {user_email_param}")
+    
+    # Ahora verificar acceso de agente
+    @agente_required
+    def panel_agente():
+        print(f"📋 Accediendo a panel_agente - Usuario: {session.get('user_id')}")
+        return render_template("agente.html")
+    
+    return panel_agente()
 
 @app.route("/agente/dashboard")
 @agente_required
