@@ -322,6 +322,10 @@
             };
 
             try {
+                // Mostrar loading
+                const mensaje = document.getElementById('mensaje');
+                mensaje.innerHTML = '<div style="text-align:center; padding:20px;">⏳ Guardando auditoría...</div>';
+
                 const response = await fetch('/api/guardar_checklist', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -329,14 +333,33 @@
                 });
 
                 const resultado = await response.json();
-                const mensaje = document.getElementById('mensaje');
 
                 if (resultado.exito) {
-                    mensaje.innerHTML = `✅ Auditoría guardada. <button onclick="window.location.href='/auditor/ver_pdf/${resultado.pdf_url.split('/').pop()}'" style="background:linear-gradient(135deg,#ab925c,#c9a961); color:#1a1a1a; border:none; padding:8px 16px; border-radius:5px; cursor:pointer; font-weight:bold;">Ver PDF 📄</button>`;
+                    // Mostrar mensaje de éxito
+                    mensaje.innerHTML = `
+                        <div style="background:linear-gradient(135deg,#00c851,#00e640); padding:25px; border-radius:10px; text-align:center; margin:20px 0; box-shadow: 0 4px 15px rgba(0,200,81,0.3);">
+                            <h2 style="color:#fff; margin:0 0 15px 0; font-size:24px;">✅ ¡Auditoría Realizada Exitosamente!</h2>
+                            <p style="color:#fff; margin:10px 0; font-size:16px;">Los datos han sido guardados correctamente</p>
+                            <p style="color:#fff; margin:5px 0; font-size:14px;">🔄 Redirigiendo al historial en <span id="countdown">3</span> segundos...</p>
+                        </div>
+                    `;
+
                     this.reset();
                     window.scrollTo(0, 0);
+
+                    // Countdown y redirección
+                    let seconds = 3;
+                    const countdownEl = document.getElementById('countdown');
+                    const countdownInterval = setInterval(() => {
+                        seconds--;
+                        if (countdownEl) countdownEl.textContent = seconds;
+                        if (seconds <= 0) {
+                            clearInterval(countdownInterval);
+                            window.location.href = '/auditor/historial';
+                        }
+                    }, 1000);
                 } else {
-                    mensaje.innerHTML = `❌ Error: ${resultado.mensaje}`;
+                    mensaje.innerHTML = `<div style="background:#ff4444; color:#fff; padding:15px; border-radius:5px;">❌ Error: ${resultado.mensaje}</div>`;
                 }
             } catch (error) {
                 document.getElementById('mensaje').innerHTML = `❌ Error de conexión: ${error}`;

@@ -201,35 +201,73 @@ def historial_auditoria():
         
     return render_template("auditor-historial.html", auditorias=auditorias)
 
-# Función para calcular no conformidades
+# Función para calcular no conformidades y buenas prácticas
 def calcular_no_conformidades(respuestas):
-    """Calcula no conformidades menores, mayores y sanciones"""
-    consecutivas = 0
+    """Calcula no conformidades menores, mayores, sanciones y buenas prácticas"""
+    consecutivas_no_cumple = 0
+    consecutivas_cumple = 0
     no_conformidades_menores = []
     no_conformidades_mayores = []
+    buenas_practicas = []
     preguntas_lista = list(respuestas.items())
     
+    # Contadores para métricas
+    total_preguntas = len(preguntas_lista)
+    cumple_count = 0
+    no_cumple_count = 0
+    parcial_count = 0
+    no_aplica_count = 0
+    
     for i, (pregunta, respuesta) in enumerate(preguntas_lista):
+        # Contar respuestas
+        if respuesta == "Cumple":
+            cumple_count += 1
+        elif respuesta == "No Cumple":
+            no_cumple_count += 1
+        elif respuesta == "Cumple Parcialmente":
+            parcial_count += 1
+        elif respuesta == "No Aplica":
+            no_aplica_count += 1
+        
+        # Detectar No Conformidades
         if respuesta in ["No Cumple", "Cumple Parcialmente"]:
-            consecutivas += 1
-            if consecutivas >= 3:
-                # Detectar no conformidad menor
+            consecutivas_no_cumple += 1
+            consecutivas_cumple = 0
+            
+            if consecutivas_no_cumple >= 3:
                 inicio = max(0, i - 2)
                 preguntas_afectadas = [preguntas_lista[j][0] for j in range(inicio, i + 1)]
                 no_conformidades_menores.append({
                     "tipo": "menor",
-                    "descripcion": f"No Conformidad Menor detectada en {consecutivas} preguntas consecutivas",
-                    "preguntas": preguntas_afectadas
+                    "descripcion": f"No Conformidad Menor: {consecutivas_no_cumple} incumplimientos consecutivos",
+                    "preguntas": preguntas_afectadas,
+                    "ubicacion": f"Preguntas {inicio + 1} a {i + 1}"
                 })
-                consecutivas = 0
+                consecutivas_no_cumple = 0
+        # Detectar Buenas Prácticas
+        elif respuesta == "Cumple":
+            consecutivas_cumple += 1
+            consecutivas_no_cumple = 0
+            
+            if consecutivas_cumple >= 3:
+                inicio = max(0, i - 2)
+                preguntas_afectadas = [preguntas_lista[j][0] for j in range(inicio, i + 1)]
+                buenas_practicas.append({
+                    "descripcion": f"Buena Práctica: {consecutivas_cumple} cumplimientos consecutivos",
+                    "preguntas": preguntas_afectadas,
+                    "ubicacion": f"Preguntas {inicio + 1} a {i + 1}"
+                })
+                consecutivas_cumple = 0
         else:
-            consecutivas = 0
+            consecutivas_no_cumple = 0
+            consecutivas_cumple = 0
     
     # Verificar no conformidades mayores (3 menores = 1 mayor)
     if len(no_conformidades_menores) >= 3:
         no_conformidades_mayores.append({
             "tipo": "mayor",
-            "descripcion": f"No Conformidad Mayor: Se detectaron {len(no_conformidades_menores)} no conformidades menores"
+            "descripcion": f"No Conformidad Mayor: {len(no_conformidades_menores)} NC menores acumuladas",
+            "nc_menores_relacionadas": len(no_conformidades_menores)
         })
     
     # Verificar sanción económica (3 mayores)
@@ -237,12 +275,31 @@ def calcular_no_conformidades(respuestas):
     if len(no_conformidades_mayores) >= 3:
         sancion = True
     
+    # Calcular porcentajes
+    preguntas_aplicables = total_preguntas - no_aplica_count
+    porcentaje_cumplimiento = (cumple_count / preguntas_aplicables * 100) if preguntas_aplicables > 0 else 0
+    porcentaje_no_cumplimiento = (no_cumple_count / preguntas_aplicables * 100) if preguntas_aplicables > 0 else 0
+    porcentaje_parcial = (parcial_count / preguntas_aplicables * 100) if preguntas_aplicables > 0 else 0
+    
     return {
         "menores": no_conformidades_menores,
         "mayores": no_conformidades_mayores,
         "sancion": sancion,
         "total_menores": len(no_conformidades_menores),
-        "total_mayores": len(no_conformidades_mayores)
+        "total_mayores": len(no_conformidades_mayores),
+        "buenas_practicas": buenas_practicas,
+        "total_buenas_practicas": len(buenas_practicas),
+        "metricas": {
+            "total_preguntas": total_preguntas,
+            "preguntas_aplicables": preguntas_aplicables,
+            "cumple": cumple_count,
+            "no_cumple": no_cumple_count,
+            "parcial": parcial_count,
+            "no_aplica": no_aplica_count,
+            "porcentaje_cumplimiento": round(porcentaje_cumplimiento, 2),
+            "porcentaje_no_cumplimiento": round(porcentaje_no_cumplimiento, 2),
+            "porcentaje_parcial": round(porcentaje_parcial, 2)
+        }
     }
 
 
